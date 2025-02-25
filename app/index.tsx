@@ -1,4 +1,4 @@
-import Colors from "@/constants/colors";
+import Colors from "@/constants/Colors";
 import { useRouter } from "expo-router";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
@@ -19,7 +19,6 @@ export default function Index() {
           height: 300,
         }}
       />
-
       <View
         style={{
           padding: 25,
