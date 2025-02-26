@@ -51,7 +51,7 @@ export default function SignInScreen() {
             margin: 12,
           }}
         >
-          Đăng ký
+          Đăng nhập
         </Text>
       </TouchableOpacity>
     </View>
