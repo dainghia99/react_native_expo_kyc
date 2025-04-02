@@ -60,6 +60,7 @@ export default function SignInScreen() {
           <TouchableOpacity
             onPress={() => {
               // Xu ly dang nhap
+              router.push("/home/home");
             }}
           >
             <Text
