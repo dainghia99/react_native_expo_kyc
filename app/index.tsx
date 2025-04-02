@@ -4,7 +4,6 @@ import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function Index() {
   const router = useRouter();
-
   return (
     <View
       style={{
@@ -69,7 +68,7 @@ export default function Index() {
           ]}
         >
           <Text style={[styles.buttonText, { color: Colors().PRIMARY }]}>
-            Bạn Chưa Có Tài Khoản?
+            Bạn Chưa Có Tài Khoản? 
           </Text>
         </TouchableOpacity>
       </View>
