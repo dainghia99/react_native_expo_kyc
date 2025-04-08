@@ -10,11 +10,35 @@ import {
   Platform,
   ScrollView,
 } from "react-native";
-import React from "react";
+import React, { useState } from "react";
 import { useRouter } from "expo-router";
+import api from "@/services/api";
 
 export default function SignUpScreen() {
   const router = useRouter();
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
+  const [error, setError] = useState("");
+
+  const handleSignUp = async () => {
+    if (formData.password !== formData.confirmPassword) {
+      setError("Mật khẩu nhập lại không khớp");
+      return;
+    }
+
+    try {
+      await api.post("/auth/register", {
+        email: formData.email,
+        password: formData.password,
+      });
+      router.push("/auth/sign-in");
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Đăng ký thất bại");
+    }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -43,36 +67,33 @@ export default function SignUpScreen() {
 
           <TextInput
             placeholder="Địa chỉ email"
+            value={formData.email}
+            onChangeText={(text) => setFormData({ ...formData, email: text })}
             style={[styles.btninput, styles.button]}
           />
           <TextInput
-            placeholder="Password"
+            placeholder="Mật khẩu"
+            value={formData.password}
+            onChangeText={(text) =>
+              setFormData({ ...formData, password: text })
+            }
+            secureTextEntry
             style={[styles.btninput, styles.button]}
           />
           <TextInput
-            placeholder="Nhập lại password"
+            placeholder="Nhập lại mật khẩu"
+            value={formData.confirmPassword}
+            onChangeText={(text) =>
+              setFormData({ ...formData, confirmPassword: text })
+            }
+            secureTextEntry
             style={[styles.btninput, styles.button]}
           />
 
-          <TouchableOpacity
-            onPress={() => {
-              // Xu ly dang ky tai khoan
-            }}
-          >
-            <Text
-              style={{
-                backgroundColor: "orange",
-                color: "#FFFFFF",
-                textAlign: "center",
-                padding: 20,
-                fontWeight: "bold",
-                borderRadius: 10,
-                margin: 12,
-                fontSize: 20,
-              }}
-            >
-              Đăng ký
-            </Text>
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+          <TouchableOpacity onPress={handleSignUp}>
+            <Text style={styles.submitButton}>Đăng ký</Text>
           </TouchableOpacity>
           <View
             style={{
@@ -116,5 +137,20 @@ const styles = StyleSheet.create({
   },
   button: {
     padding: 10,
+  },
+  errorText: {
+    color: "red",
+    textAlign: "center",
+    marginTop: 10,
+  },
+  submitButton: {
+    backgroundColor: "orange",
+    color: "#FFFFFF",
+    textAlign: "center",
+    padding: 20,
+    fontWeight: "bold",
+    borderRadius: 10,
+    margin: 12,
+    fontSize: 20,
   },
 });

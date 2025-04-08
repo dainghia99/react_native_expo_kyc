@@ -1,5 +1,8 @@
 import Colors from "@/constants/Colors";
 import { useRouter } from "expo-router";
+import { useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import api from "@/services/api";
 import {
   View,
   Text,
@@ -15,6 +18,21 @@ import {
 
 export default function SignInScreen() {
   const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  const handleLogin = async () => {
+    try {
+      const response = await api.post("/auth/login", { email, password });
+      await AsyncStorage.setItem("token", response.data.token);
+      await AsyncStorage.setItem("user", JSON.stringify(response.data.user));
+      router.replace("/home/home");
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Đăng nhập thất bại");
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -43,10 +61,15 @@ export default function SignInScreen() {
 
           <TextInput
             placeholder="Địa chỉ email"
+            value={email}
+            onChangeText={setEmail}
             style={[styles.btninput, styles.button]}
           />
           <TextInput
             placeholder="Password"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
             style={[styles.btninput, styles.button]}
           />
 
@@ -57,12 +80,7 @@ export default function SignInScreen() {
             <Text style={{ color: Colors().PRIMARY }}>Quên mật khẩu?</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => {
-              // Xu ly dang nhap
-              router.push("/home/home");
-            }}
-          >
+          <TouchableOpacity onPress={handleLogin}>
             <Text
               style={{
                 backgroundColor: "orange",
