@@ -1,6 +1,15 @@
-import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
+import React from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  Alert,
+} from "react-native";
 import Colors from "@/constants/Colors";
 import { useRouter } from "expo-router";
+import { useAuth } from "../context/AuthContext";
 
 const mockUserProfile = {
   name: "Nguyen Van A",
@@ -13,6 +22,42 @@ const mockUserProfile = {
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { user, logout, checkKYCStatus } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.replace("/auth/sign-in");
+    } catch (error) {
+      Alert.alert("Lỗi", "Đăng xuất thất bại");
+    }
+  };
+
+  const handleKYCVerification = () => {
+    router.push("/verify");
+  };
+
+  const getKYCStatusText = () => {
+    switch (user?.kyc_status) {
+      case "verified":
+        return "Đã xác thực";
+      case "pending":
+        return "Đang chờ xác thực";
+      default:
+        return "Chưa xác thực";
+    }
+  };
+
+  const getKYCStatusColor = () => {
+    switch (user?.kyc_status) {
+      case "verified":
+        return "#4CAF50";
+      case "pending":
+        return "#FFC107";
+      default:
+        return "#F44336";
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -30,14 +75,14 @@ export default function ProfileScreen() {
         />
         <Text style={styles.name}>{mockUserProfile.name}</Text>
         <View style={styles.statusBadge}>
-          <Text style={styles.statusText}>{mockUserProfile.status}</Text>
+          <Text style={styles.statusText}>{getKYCStatusText()}</Text>
         </View>
       </View>
 
       <View style={styles.infoContainer}>
         <View style={styles.infoItem}>
           <Text style={styles.label}>Email</Text>
-          <Text style={styles.value}>{mockUserProfile.email}</Text>
+          <Text style={styles.value}>{user?.email}</Text>
         </View>
         <View style={styles.infoItem}>
           <Text style={styles.label}>Số điện thoại</Text>
@@ -51,6 +96,31 @@ export default function ProfileScreen() {
           <Text style={styles.label}>Ngày tham gia</Text>
           <Text style={styles.value}>{mockUserProfile.dateJoined}</Text>
         </View>
+        <View style={styles.infoItem}>
+          <Text style={styles.label}>Trạng thái KYC</Text>
+          <View style={styles.kycStatusContainer}>
+            <View
+              style={[
+                styles.kycStatusDot,
+                { backgroundColor: getKYCStatusColor() },
+              ]}
+            />
+            <Text style={styles.kycStatusText}>{getKYCStatusText()}</Text>
+          </View>
+        </View>
+
+        {user?.kyc_status !== "verified" && (
+          <TouchableOpacity
+            style={styles.verifyButton}
+            onPress={handleKYCVerification}
+          >
+            <Text style={styles.verifyButtonText}>Xác thực KYC</Text>
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.logoutButtonText}>Đăng xuất</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -117,5 +187,43 @@ const styles = StyleSheet.create({
   value: {
     fontSize: 16,
     color: "#000",
+  },
+  kycStatusContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  kycStatusDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 8,
+  },
+  kycStatusText: {
+    fontSize: 18,
+    fontWeight: "500",
+  },
+  verifyButton: {
+    backgroundColor: Colors().PRIMARY,
+    padding: 15,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 20,
+  },
+  verifyButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  logoutButton: {
+    backgroundColor: "#f44336",
+    padding: 15,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 20,
+  },
+  logoutButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });

@@ -1,42 +1,51 @@
+import Colors from "@/constants/Colors";
+import { useRouter } from "expo-router";
+import { useState } from "react";
 import {
   View,
   Text,
-  Image,
   TextInput,
-  StyleSheet,
   TouchableOpacity,
+  StyleSheet,
   Pressable,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
 } from "react-native";
-import React, { useState } from "react";
-import { useRouter } from "expo-router";
 import api from "@/services/api";
 
 export default function SignUpScreen() {
   const router = useRouter();
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-    confirmPassword: "",
-  });
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSignUp = async () => {
-    if (formData.password !== formData.confirmPassword) {
-      setError("Mật khẩu nhập lại không khớp");
+    if (!email || !password || !confirmPassword) {
+      setError("Vui lòng nhập đầy đủ thông tin");
       return;
     }
 
+    if (password !== confirmPassword) {
+      setError("Mật khẩu không khớp");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
     try {
-      await api.post("/auth/register", {
-        email: formData.email,
-        password: formData.password,
-      });
+      await api.post("/auth/register", { email, password });
+      Alert.alert("Thành công", "Đăng ký thành công! Vui lòng đăng nhập.");
       router.push("/auth/sign-in");
     } catch (err: any) {
       setError(err.response?.data?.error || "Đăng ký thất bại");
+      Alert.alert("Lỗi", err.response?.data?.error || "Đăng ký thất bại");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -46,78 +55,52 @@ export default function SignUpScreen() {
       style={{ flex: 1 }}
     >
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-        <View>
-          <View
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <Image
-              source={require("@/assets/images/logo/Logo_DAI_NAM.png")}
-              style={{
-                width: 250,
-                height: 250,
-                marginTop: 50,
-                marginBottom: 50,
-              }}
-            />
-          </View>
-
-          <TextInput
-            placeholder="Địa chỉ email"
-            value={formData.email}
-            onChangeText={(text) => setFormData({ ...formData, email: text })}
-            style={[styles.btninput, styles.button]}
-          />
-          <TextInput
-            placeholder="Mật khẩu"
-            value={formData.password}
-            onChangeText={(text) =>
-              setFormData({ ...formData, password: text })
-            }
-            secureTextEntry
-            style={[styles.btninput, styles.button]}
-          />
-          <TextInput
-            placeholder="Nhập lại mật khẩu"
-            value={formData.confirmPassword}
-            onChangeText={(text) =>
-              setFormData({ ...formData, confirmPassword: text })
-            }
-            secureTextEntry
-            style={[styles.btninput, styles.button]}
-          />
+        <View style={styles.container}>
+          <Text style={styles.title}>Đăng ký tài khoản</Text>
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-          <TouchableOpacity onPress={handleSignUp}>
-            <Text style={styles.submitButton}>Đăng ký</Text>
-          </TouchableOpacity>
-          <View
-            style={{
-              display: "flex",
-              flexDirection: "row",
-              gap: 5,
-              marginTop: 20,
-              justifyContent: "center",
-            }}
+          <TextInput
+            placeholder="Địa chỉ email"
+            value={email}
+            onChangeText={setEmail}
+            style={[styles.input, styles.button]}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+          <TextInput
+            placeholder="Mật khẩu"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            style={[styles.input, styles.button]}
+          />
+          <TextInput
+            placeholder="Xác nhận mật khẩu"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            secureTextEntry
+            style={[styles.input, styles.button]}
+          />
+
+          <TouchableOpacity
+            onPress={handleSignUp}
+            disabled={loading}
+            style={[styles.signUpButton, loading && styles.disabledButton]}
           >
-            <Text>Bạn đã có tài khoản?</Text>
+            <Text style={styles.signUpButtonText}>
+              {loading ? "Đang đăng ký..." : "Đăng ký"}
+            </Text>
+          </TouchableOpacity>
+
+          <View style={styles.loginContainer}>
+            <Text>Đã có tài khoản?</Text>
             <Pressable
               onPress={() => {
                 router.push("/auth/sign-in");
               }}
             >
-              <Text
-                style={{
-                  color: "#FF0000",
-                  fontWeight: "bold",
-                }}
-              >
-                Đăng nhập ngay
-              </Text>
+              <Text style={styles.loginText}>Đăng nhập ngay</Text>
             </Pressable>
           </View>
         </View>
@@ -127,9 +110,19 @@ export default function SignUpScreen() {
 }
 
 const styles = StyleSheet.create({
-  btninput: {
+  container: {
+    flex: 1,
+    padding: 20,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 30,
+    textAlign: "center",
+  },
+  input: {
     height: 60,
-    margin: 12,
+    marginBottom: 12,
     borderWidth: 1,
     borderRadius: 10,
     paddingLeft: 15,
@@ -138,19 +131,34 @@ const styles = StyleSheet.create({
   button: {
     padding: 10,
   },
+  signUpButton: {
+    backgroundColor: Colors().PRIMARY,
+    padding: 20,
+    borderRadius: 10,
+    marginTop: 20,
+  },
+  signUpButtonText: {
+    color: "#FFFFFF",
+    textAlign: "center",
+    fontWeight: "bold",
+    fontSize: 20,
+  },
+  disabledButton: {
+    opacity: 0.7,
+  },
   errorText: {
     color: "red",
     textAlign: "center",
-    marginTop: 10,
+    marginBottom: 10,
   },
-  submitButton: {
-    backgroundColor: "orange",
-    color: "#FFFFFF",
-    textAlign: "center",
-    padding: 20,
+  loginContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 20,
+    gap: 5,
+  },
+  loginText: {
+    color: Colors().PRIMARY,
     fontWeight: "bold",
-    borderRadius: 10,
-    margin: 12,
-    fontSize: 20,
   },
 });

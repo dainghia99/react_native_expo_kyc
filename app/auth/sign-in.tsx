@@ -1,8 +1,6 @@
 import Colors from "@/constants/Colors";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import api from "@/services/api";
 import {
   View,
   Text,
@@ -14,22 +12,35 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
 } from "react-native";
+import { useAuth } from "../context/AuthContext";
 
 export default function SignInScreen() {
   const router = useRouter();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
+    if (!email || !password) {
+      setError("Vui lòng nhập đầy đủ thông tin");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
     try {
-      const response = await api.post("/auth/login", { email, password });
-      await AsyncStorage.setItem("token", response.data.token);
-      await AsyncStorage.setItem("user", JSON.stringify(response.data.user));
+      await login(email, password);
       router.replace("/home/home");
     } catch (err: any) {
       setError(err.response?.data?.error || "Đăng nhập thất bại");
+      Alert.alert("Lỗi", err.response?.data?.error || "Đăng nhập thất bại");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -59,14 +70,18 @@ export default function SignInScreen() {
             />
           </View>
 
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
           <TextInput
             placeholder="Địa chỉ email"
             value={email}
             onChangeText={setEmail}
             style={[styles.btninput, styles.button]}
+            keyboardType="email-address"
+            autoCapitalize="none"
           />
           <TextInput
-            placeholder="Password"
+            placeholder="Mật khẩu"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -80,22 +95,16 @@ export default function SignInScreen() {
             <Text style={{ color: Colors().PRIMARY }}>Quên mật khẩu?</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={handleLogin}>
-            <Text
-              style={{
-                backgroundColor: "orange",
-                color: "#FFFFFF",
-                textAlign: "center",
-                padding: 20,
-                fontWeight: "bold",
-                borderRadius: 10,
-                margin: 12,
-                fontSize: 20,
-              }}
-            >
-              Đăng nhập
+          <TouchableOpacity
+            onPress={handleLogin}
+            disabled={loading}
+            style={[styles.loginButton, loading && styles.disabledButton]}
+          >
+            <Text style={styles.loginButtonText}>
+              {loading ? "Đang đăng nhập..." : "Đăng nhập"}
             </Text>
           </TouchableOpacity>
+
           <View
             style={{
               display: "flex",
@@ -138,5 +147,25 @@ const styles = StyleSheet.create({
   },
   button: {
     padding: 10,
+  },
+  loginButton: {
+    backgroundColor: Colors().PRIMARY,
+    padding: 20,
+    borderRadius: 10,
+    margin: 12,
+  },
+  loginButtonText: {
+    color: "#FFFFFF",
+    textAlign: "center",
+    fontWeight: "bold",
+    fontSize: 20,
+  },
+  disabledButton: {
+    opacity: 0.7,
+  },
+  errorText: {
+    color: "red",
+    textAlign: "center",
+    marginBottom: 10,
   },
 });
