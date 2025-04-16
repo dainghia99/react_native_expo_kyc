@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import { useAuth } from "@/context/AuthContext";
 import {
   View,
   Text,
@@ -6,39 +7,25 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
+  Alert,
 } from "react-native";
 import Colors from "@/constants/Colors";
 
-// Mock data for testing
-const mockUser = {
-  name: "Nguyen Van A",
-  email: "nguyenvana@example.com",
-};
-
-const mockKYCAccounts = [
-  {
-    id: 1,
-    name: "Tran Van B",
-    email: "tranvanb@example.com",
-    status: "Verified",
-    date: "2024-02-20",
-  },
-  {
-    id: 2,
-    name: "Le Thi C",
-    email: "lethic@example.com",
-    status: "Verified",
-    date: "2024-02-19",
-  },
-  // Add more mock data as needed
-];
-
 export default function HomePage() {
   const router = useRouter();
+  const { user, logout } = useAuth();
 
-  const handleLogout = () => {
-    // Add logout logic here
-    router.replace("/auth/sign-in");
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.replace("/auth/sign-in");
+    } catch (error) {
+      Alert.alert("Lỗi", "Không thể đăng xuất. Vui lòng thử lại.");
+    }
+  };
+
+  const handleVerifyKYC = () => {
+    router.push("/verify");
   };
 
   return (
@@ -54,8 +41,13 @@ export default function HomePage() {
             style={styles.avatar}
           />
           <View>
-            <Text style={styles.userName}>{mockUser.name}</Text>
-            <Text style={styles.userEmail}>{mockUser.email}</Text>
+            <Text style={styles.userName}>{user?.email}</Text>
+            <Text style={styles.userStatus}>
+              Trạng thái:{" "}
+              {user?.kyc_status === "verified"
+                ? "Đã xác minh"
+                : "Chưa xác minh"}
+            </Text>
           </View>
         </TouchableOpacity>
 
@@ -64,25 +56,37 @@ export default function HomePage() {
         </TouchableOpacity>
       </View>
 
-      {/* KYC Accounts List */}
+      {/* Main Content */}
       <View style={styles.content}>
-        <Text style={styles.title}>Danh sách tài khoản đã KYC</Text>
-        <ScrollView style={styles.accountsList}>
-          {mockKYCAccounts.map((account) => (
-            <View key={account.id} style={styles.accountCard}>
-              <View>
-                <Text style={styles.accountName}>{account.name}</Text>
-                <Text style={styles.accountEmail}>{account.email}</Text>
-                <Text style={styles.accountDate}>
-                  Ngày xác thực: {account.date}
-                </Text>
-              </View>
-              <View style={styles.statusContainer}>
-                <Text style={styles.statusText}>{account.status}</Text>
-              </View>
-            </View>
-          ))}
-        </ScrollView>
+        {user?.kyc_status !== "verified" ? (
+          <View style={styles.verificationSection}>
+            <Text style={styles.verificationTitle}>
+              Xác minh tài khoản của bạn
+            </Text>
+            <Text style={styles.verificationDescription}>
+              Để sử dụng đầy đủ tính năng, vui lòng xác minh danh tính của bạn
+              thông qua quá trình KYC
+            </Text>
+            <TouchableOpacity
+              style={styles.verifyButton}
+              onPress={handleVerifyKYC}
+            >
+              <Text style={styles.verifyButtonText}>Xác minh ngay</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.verifiedSection}>
+            <Text style={styles.verificationTitle}>
+              Tài khoản đã được xác minh
+            </Text>
+            <Text style={styles.verificationDescription}>
+              Cảm ơn bạn đã xác minh danh tính. Bạn có thể sử dụng đầy đủ tính
+              năng của ứng dụng.
+            </Text>
+          </View>
+        )}
+
+        {/* Có thể thêm các section khác ở đây */}
       </View>
     </View>
   );
@@ -117,9 +121,10 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
   },
-  userEmail: {
+  userStatus: {
     color: Colors().WHITE,
     fontSize: 14,
+    marginTop: 4,
   },
   logoutButton: {
     backgroundColor: Colors().WHITE,
@@ -134,23 +139,10 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 20,
-    color: Colors().PRIMARY,
-  },
-  accountsList: {
-    flex: 1,
-  },
-  accountCard: {
+  verificationSection: {
     backgroundColor: Colors().WHITE,
-    padding: 15,
     borderRadius: 10,
-    marginBottom: 10,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    padding: 20,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
@@ -160,28 +152,40 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  accountName: {
-    fontSize: 16,
+  verifiedSection: {
+    backgroundColor: Colors().WHITE,
+    borderRadius: 10,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  verificationTitle: {
+    fontSize: 20,
     fontWeight: "bold",
     color: Colors().PRIMARY,
+    marginBottom: 10,
   },
-  accountEmail: {
+  verificationDescription: {
+    fontSize: 16,
     color: Colors().GRAY,
-    marginTop: 5,
+    marginBottom: 20,
+    lineHeight: 24,
   },
-  accountDate: {
-    color: Colors().GRAY,
-    fontSize: 12,
-    marginTop: 5,
-  },
-  statusContainer: {
+  verifyButton: {
     backgroundColor: Colors().PRIMARY,
-    padding: 8,
-    borderRadius: 15,
+    padding: 15,
+    borderRadius: 8,
+    alignItems: "center",
   },
-  statusText: {
+  verifyButtonText: {
     color: Colors().WHITE,
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: "bold",
   },
 });

@@ -1,8 +1,8 @@
 import Colors from "@/constants/Colors";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import api from "@/services/api";
+import { useAuth } from "@/context/AuthContext";
 import {
   View,
   Text,
@@ -14,22 +14,34 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
 } from "react-native";
 
 export default function SignInScreen() {
   const router = useRouter();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert("Lỗi", "Vui lòng nhập đầy đủ thông tin");
+      return;
+    }
+
+    setIsLoading(true);
     try {
       const response = await api.post("/auth/login", { email, password });
-      await AsyncStorage.setItem("token", response.data.token);
-      await AsyncStorage.setItem("user", JSON.stringify(response.data.user));
+      await login(response.data.token, response.data.user);
       router.replace("/home/home");
     } catch (err: any) {
-      setError(err.response?.data?.error || "Đăng nhập thất bại");
+      Alert.alert(
+        "Lỗi đăng nhập",
+        err.response?.data?.error || "Đã có lỗi xảy ra"
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -63,10 +75,12 @@ export default function SignInScreen() {
             placeholder="Địa chỉ email"
             value={email}
             onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
             style={[styles.btninput, styles.button]}
           />
           <TextInput
-            placeholder="Password"
+            placeholder="Mật khẩu"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -80,45 +94,23 @@ export default function SignInScreen() {
             <Text style={{ color: Colors().PRIMARY }}>Quên mật khẩu?</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={handleLogin}>
-            <Text
-              style={{
-                backgroundColor: "orange",
-                color: "#FFFFFF",
-                textAlign: "center",
-                padding: 20,
-                fontWeight: "bold",
-                borderRadius: 10,
-                margin: 12,
-                fontSize: 20,
-              }}
-            >
-              Đăng nhập
+          <TouchableOpacity
+            onPress={handleLogin}
+            disabled={isLoading}
+            style={[
+              styles.loginButton,
+              isLoading && styles.loginButtonDisabled,
+            ]}
+          >
+            <Text style={styles.loginButtonText}>
+              {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
             </Text>
           </TouchableOpacity>
-          <View
-            style={{
-              display: "flex",
-              flexDirection: "row",
-              gap: 5,
-              marginTop: 20,
-              justifyContent: "center",
-            }}
-          >
+
+          <View style={styles.signupContainer}>
             <Text>Bạn chưa có tài khoản?</Text>
-            <Pressable
-              onPress={() => {
-                router.push("/auth/sign-up");
-              }}
-            >
-              <Text
-                style={{
-                  color: "#FF0000",
-                  fontWeight: "bold",
-                }}
-              >
-                Đăng ký ngay
-              </Text>
+            <Pressable onPress={() => router.push("/auth/sign-up")}>
+              <Text style={styles.signupText}>Đăng ký ngay</Text>
             </Pressable>
           </View>
         </View>
@@ -138,5 +130,30 @@ const styles = StyleSheet.create({
   },
   button: {
     padding: 10,
+  },
+  loginButton: {
+    backgroundColor: Colors().PRIMARY,
+    padding: 20,
+    borderRadius: 10,
+    margin: 12,
+  },
+  loginButtonDisabled: {
+    opacity: 0.7,
+  },
+  loginButtonText: {
+    color: Colors().WHITE,
+    textAlign: "center",
+    fontWeight: "bold",
+    fontSize: 20,
+  },
+  signupContainer: {
+    flexDirection: "row",
+    gap: 5,
+    marginTop: 20,
+    justifyContent: "center",
+  },
+  signupText: {
+    color: Colors().PRIMARY,
+    fontWeight: "bold",
   },
 });

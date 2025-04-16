@@ -1,123 +1,145 @@
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
-import { Camera } from "expo-camera";
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  Platform,
+} from "react-native";
+import { Camera, useCameraPermissions } from "expo-camera"; // Import useCameraPermissions directly
+import { useRouter } from "expo-router";
 import Colors from "@/constants/Colors";
-import * as ImagePicker from "expo-image-picker";
-import { verifyLiveness, uploadIDCard } from "@/services/kyc";
+import { useKYC } from "@/hooks/useKYC";
 
 export default function VerifyScreen() {
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
-  const [type, setType] = useState(Camera.Constants.Type.front);
+  const router = useRouter();
+  const { handleVerifyLiveness, isLoading } = useKYC();
+  const [permission, requestPermission] = useCameraPermissions(); // Use the imported hook directly
   const [isRecording, setIsRecording] = useState(false);
-  const cameraRef = useRef<Camera>(null);
+  const [countdown, setCountdown] = useState(0);
+  const cameraRef = useRef<Camera | null>(null); // Add type to useRef
+  let timer: NodeJS.Timeout | null = null; // Explicitly type timer
 
   useEffect(() => {
-    (async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      setHasPermission(status === "granted");
-    })();
-  }, []);
+    if (!permission?.granted) {
+      requestPermission();
+    }
+  }, [permission]);
+
+  useEffect(() => {
+    // Remove local timer declaration, use the one defined above
+    if (countdown > 0) {
+      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    } else if (isRecording && countdown === 0) {
+      stopRecording();
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [countdown, isRecording]);
 
   const startLivenessCheck = async () => {
     if (!cameraRef.current) return;
 
-    setIsRecording(true);
-    const video = await cameraRef.current.recordAsync({
-      maxDuration: 5,
-      quality: "720p",
-    });
-    setIsRecording(false);
-
     try {
+      setIsRecording(true);
+      setCountdown(5);
+
+      const video = await cameraRef.current.recordAsync({
+        maxDuration: 5,
+        quality: Platform.OS === "ios" ? "720p" : "720p",
+      });
+
       const formData = new FormData();
+      // Correctly format file for FormData append in React Native/Expo
       formData.append("video", {
         uri: video.uri,
-        type: "video/mp4",
         name: "liveness.mp4",
-      });
+        type: "video/mp4",
+      } as any); // Cast to any as a workaround for FormData typing
 
-      const result = await verifyLiveness(formData);
-      Alert.alert("Kết quả", `Điểm số: ${result.liveness_score}`);
-    } catch (error) {
-      Alert.alert("Lỗi", "Không thể xác thực. Vui lòng thử lại.");
-    }
-  };
-
-  const selectIDCard = async (side: "front" | "back") => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 1,
-    });
-
-    if (!result.canceled) {
-      const formData = new FormData();
-      formData.append("image", {
-        uri: result.assets[0].uri,
-        type: "image/jpeg",
-        name: `${side}.jpg`,
-      });
-
-      try {
-        await uploadIDCard(formData, side === "front");
-        Alert.alert(
-          "Thành công",
-          `Đã tải lên ảnh ${side === "front" ? "mặt trước" : "mặt sau"}`
-        );
-      } catch (error) {
-        Alert.alert("Lỗi", "Không thể tải lên ảnh. Vui lòng thử lại.");
+      const success = await handleVerifyLiveness(formData);
+      if (success) {
+        router.back();
       }
+    } catch (error) {
+      Alert.alert("Lỗi", "Không thể ghi video. Vui lòng thử lại.");
+      console.error(error);
+    } finally {
+      setIsRecording(false);
+      setCountdown(0);
     }
   };
 
-  if (hasPermission === null) {
-    return <View />;
-  }
-  if (hasPermission === false) {
-    return <Text>No access to camera</Text>;
+  const stopRecording = async () => {
+    if (cameraRef.current && isRecording) {
+      try {
+        await cameraRef.current.stopRecording();
+      } catch (error) {
+        console.error("Error stopping recording:", error);
+      }
+      setIsRecording(false);
+    }
+  };
+
+  if (!permission?.granted) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.guideText}>
+          Cần quyền truy cập camera để tiếp tục
+        </Text>
+        <TouchableOpacity style={styles.button} onPress={requestPermission}>
+          <Text style={styles.buttonText}>Cấp quyền</Text>
+        </TouchableOpacity>
+      </View>
+    );
   }
 
   return (
     <View style={styles.container}>
-      <Camera style={styles.camera} type={type} ref={cameraRef}>
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={styles.flipButton}
-            onPress={() => {
-              setType(
-                type === Camera.Constants.Type.back
-                  ? Camera.Constants.Type.front
-                  : Camera.Constants.Type.back
-              );
-            }}
-          >
-            <Text style={styles.buttonText}>Đổi camera</Text>
-          </TouchableOpacity>
+      <Camera
+        ratio="16:9"
+        style={styles.camera}
+        type={"front"} // Use string literal 'front'
+        ref={cameraRef}
+      >
+        <View style={styles.overlay}>
+          {countdown > 0 && (
+            <View style={styles.countdown}>
+              <Text style={styles.countdownText}>{countdown}</Text>
+            </View>
+          )}
+          {!isRecording && !isLoading && (
+            <View style={styles.guide}>
+              <Text style={styles.guideText}>
+                Đặt khuôn mặt vào khung hình và nhấn "Bắt đầu"
+              </Text>
+              <Text style={styles.guideText}>Giữ yên và nháy mắt tự nhiên</Text>
+            </View>
+          )}
         </View>
       </Camera>
 
       <View style={styles.controls}>
         <TouchableOpacity
-          style={[styles.button, isRecording && styles.recording]}
+          style={[
+            styles.button,
+            (isRecording || isLoading) && styles.buttonDisabled,
+          ]}
+          disabled={isRecording || isLoading}
           onPress={startLivenessCheck}
-          disabled={isRecording}
         >
           <Text style={styles.buttonText}>
-            {isRecording ? "Đang ghi..." : "Bắt đầu xác thực"}
+            {isLoading ? "Đang xử lý..." : "Bắt đầu kiểm tra"}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.button}
-          onPress={() => selectIDCard("front")}
+          style={styles.backButton}
+          onPress={() => router.back()}
         >
-          <Text style={styles.buttonText}>Tải CCCD mặt trước</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => selectIDCard("back")}
-        >
-          <Text style={styles.buttonText}>Tải CCCD mặt sau</Text>
+          <Text style={styles.backButtonText}>Quay lại</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -127,15 +149,40 @@ export default function VerifyScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: Colors().WHITE,
   },
   camera: {
     flex: 1,
   },
-  buttonContainer: {
-    position: "absolute",
-    bottom: 20,
-    width: "100%",
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
     alignItems: "center",
+  },
+  guide: {
+    padding: 20,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    borderRadius: 10,
+    marginBottom: 20,
+  },
+  guideText: {
+    color: Colors().WHITE,
+    textAlign: "center",
+    fontSize: 16,
+    marginBottom: 10,
+  },
+  countdown: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  countdownText: {
+    color: Colors().WHITE,
+    fontSize: 24,
+    fontWeight: "bold",
   },
   controls: {
     padding: 20,
@@ -145,20 +192,27 @@ const styles = StyleSheet.create({
     backgroundColor: Colors().PRIMARY,
     padding: 15,
     borderRadius: 10,
-    alignItems: "center",
     marginBottom: 10,
   },
-  flipButton: {
-    backgroundColor: "rgba(0,0,0,0.5)",
-    padding: 10,
-    borderRadius: 5,
+  buttonDisabled: {
+    opacity: 0.7,
   },
   buttonText: {
     color: Colors().WHITE,
     fontSize: 16,
     fontWeight: "bold",
+    textAlign: "center",
   },
-  recording: {
-    backgroundColor: "red",
+  backButton: {
+    padding: 15,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors().PRIMARY,
+  },
+  backButtonText: {
+    color: Colors().PRIMARY,
+    fontSize: 16,
+    fontWeight: "bold",
+    textAlign: "center",
   },
 });

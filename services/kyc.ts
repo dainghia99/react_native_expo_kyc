@@ -1,15 +1,7 @@
 import api from "./api";
 
-export interface KYCVerificationResponse {
-  message: string;
-  blink_count: number;
-  liveness_score: number;
-}
-
-export const verifyLiveness = async (
-  videoFile: FormData
-): Promise<KYCVerificationResponse> => {
-  const response = await api.post("/kyc/verify-liveness", videoFile, {
+export const verifyLiveness = async (videoFormData: FormData) => {
+  const response = await api.post("/kyc/verify/liveness", videoFormData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
@@ -18,20 +10,22 @@ export const verifyLiveness = async (
 };
 
 export const uploadIDCard = async (
-  frontImage: FormData,
-  backImage: FormData
+  imageFormData: FormData,
+  isFront: boolean
 ) => {
   const response = await api.post(
-    "/kyc/upload-id-card",
-    {
-      front: frontImage,
-      back: backImage,
-    },
+    `/kyc/verify/id-card?front=${isFront}`,
+    imageFormData,
     {
       headers: {
         "Content-Type": "multipart/form-data",
       },
     }
   );
+  return response.data;
+};
+
+export const getKYCStatus = async () => {
+  const response = await api.get("/kyc/status");
   return response.data;
 };
