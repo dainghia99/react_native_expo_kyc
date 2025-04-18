@@ -30,12 +30,17 @@ export default function SignUpScreen() {
     }
 
     try {
-      await api.post("/auth/register", {
+      const response = await api.post("/auth/register", {
         email: formData.email,
         password: formData.password,
       });
+      console.log("Register response:", response.data);
+
+      // Hiển thị thông báo thành công và chuyển hướng đến trang đăng nhập
+      alert("Đăng ký thành công! Vui lòng đăng nhập.");
       router.push("/auth/sign-in");
     } catch (err: any) {
+      console.error("Register error:", err.response?.data);
       setError(err.response?.data?.error || "Đăng ký thất bại");
     }
   };

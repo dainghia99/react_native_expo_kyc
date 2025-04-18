@@ -12,9 +12,10 @@ function RootLayoutNav() {
     if (isLoading) return;
 
     const inAuthGroup = segments[0] === "auth";
+    const isRootPath = segments.length === 0;
 
-    if (!user && !inAuthGroup) {
-      // Redirect to sign-in if not logged in
+    if (!user && !inAuthGroup && !isRootPath) {
+      // Redirect to sign-in if not logged in and not on root or auth pages
       router.replace("/auth/sign-in");
     } else if (user && inAuthGroup) {
       // Redirect to home if logged in and trying to access auth pages

@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import api from "@/services/api";
 
 type User = {
   id: number;
@@ -56,6 +57,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
+      // Gọi API logout nếu có token
+      if (token) {
+        try {
+          // Sử dụng instance api đã được cấu hình
+          const response = await api.post("/auth/logout");
+          console.log("Logout response:", response.data);
+        } catch (apiError) {
+          console.error("Error calling logout API:", apiError);
+          // Tiếp tục xử lý logout dù API có lỗi
+        }
+      }
+
+      // Xóa dữ liệu đăng nhập khỏi local storage
       await AsyncStorage.removeItem("token");
       await AsyncStorage.removeItem("user");
       setToken(null);

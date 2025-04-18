@@ -1,8 +1,12 @@
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+// Thay đổi IP này thành IP của máy chủ backend của bạn
+// Sử dụng localhost cho máy ảo hoặc IP của máy tính cho thiết bị thật
+const API_URL = "http://localhost:5000";
+
 const api = axios.create({
-  baseURL: "http://192.168.1.7:5000",
+  baseURL: API_URL,
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
