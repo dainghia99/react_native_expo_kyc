@@ -17,10 +17,8 @@ export const useKYC = () => {
           // Cập nhật trạng thái user nếu xác thực thành công
           if (user) {
             const updatedUser = { ...user, kyc_status: "verified" };
-            await login(
-              (await AsyncStorage.getItem("token")) || "",
-              updatedUser
-            );
+            const token = (await AsyncStorage.getItem("token")) || "";
+            await login(token, updatedUser);
           }
           Alert.alert(
             "Thành công",

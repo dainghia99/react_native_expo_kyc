@@ -33,9 +33,16 @@ export default function SignInScreen() {
     setIsLoading(true);
     try {
       const response = await api.post("/auth/login", { email, password });
-      await login(response.data.token, response.data.user);
+      console.log("Login response:", response.data);
+      // Backend trả về cấu trúc { token, user, message }
+      if (response.data.token) {
+        await login(response.data.token, response.data.user);
+      } else {
+        throw new Error("Token không hợp lệ");
+      }
       router.replace("/home/home");
     } catch (err: any) {
+      console.error("Login error:", err.response?.data);
       Alert.alert(
         "Lỗi đăng nhập",
         err.response?.data?.error || "Đã có lỗi xảy ra"
