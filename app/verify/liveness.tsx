@@ -95,6 +95,11 @@ export default function LivenessVerifyScreen() {
         }
     };
 
+    // Thêm hàm để xử lý khi camera sẵn sàng
+    const handleCameraReady = () => {
+        console.log("Camera sẵn sàng và đã được khởi tạo đầy đủ");
+    };
+
     const startRecording = async () => {
         // Nếu đang ghi hoặc đang xử lý, không cho phép bắt đầu lại
         if (isRecording || isProcessing) {
@@ -124,9 +129,12 @@ export default function LivenessVerifyScreen() {
             let video;
             try {
                 // Đảm bảo không có phiên ghi nào đang diễn ra
-                if (cameraRef.current && cameraRef.current._cameraHandle) {
+                if (cameraRef.current) {
                     video = await cameraRef.current.recordAsync({
                         maxDuration: 5,
+                        quality: "480p",
+                        mute: false,
+                        mirror: false,
                     });
                 } else {
                     throw new Error("Camera không sẵn sàng");
@@ -135,7 +143,17 @@ export default function LivenessVerifyScreen() {
                 console.error("Lỗi khi ghi video:", recordError);
                 // Thử lại với các tùy chọn đơn giản hơn sau khi chờ thêm
                 await new Promise((resolve) => setTimeout(resolve, 1000));
-                video = await cameraRef.current.recordAsync();
+                try {
+                    video = await cameraRef.current.recordAsync({
+                        maxDuration: 3,
+                        quality: "low",
+                    });
+                } catch (retryError) {
+                    console.error("Lỗi khi thử lại ghi video:", retryError);
+                    throw new Error(
+                        "Không thể ghi video sau nhiều lần thử. Vui lòng thử lại sau."
+                    );
+                }
             }
             console.log("Ghi video hoàn tất:", video);
 
@@ -248,7 +266,25 @@ export default function LivenessVerifyScreen() {
                 <Text style={styles.headerTitle}>Xác minh khuôn mặt</Text>
             </View>
 
-            <CameraView style={styles.camera} facing="front" ref={cameraRef}>
+            <CameraView
+                style={styles.camera}
+                facing="front"
+                ref={cameraRef}
+                mode="video"
+                video={{
+                    quality: "480p",
+                    maxDuration: 5,
+                    mute: false,
+                }}
+                onCameraReady={handleCameraReady}
+                onMountError={(error) => {
+                    console.error("Lỗi khi khởi tạo camera:", error);
+                    Alert.alert(
+                        "Lỗi camera",
+                        "Không thể khởi tạo camera. Vui lòng thử lại sau."
+                    );
+                }}
+            >
                 <View style={styles.overlay}>
                     {countdown > 0 && (
                         <View style={styles.countdown}>

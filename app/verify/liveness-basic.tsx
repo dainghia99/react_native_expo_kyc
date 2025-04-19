@@ -22,7 +22,8 @@ export default function LivenessVerifyBasicScreen() {
     useEffect(() => {
         (async () => {
             const { status } = await Camera.requestCameraPermissionsAsync();
-            const { status: micStatus } = await Camera.requestMicrophonePermissionsAsync();
+            const { status: micStatus } =
+                await Camera.requestMicrophonePermissionsAsync();
             setHasPermission(status === "granted" && micStatus === "granted");
         })();
 
@@ -33,7 +34,10 @@ export default function LivenessVerifyBasicScreen() {
                     console.log("Dừng ghi video khi rời khỏi màn hình");
                     cameraRef.current.stopRecording();
                 } catch (error) {
-                    console.error("Error stopping recording on unmount:", error);
+                    console.error(
+                        "Error stopping recording on unmount:",
+                        error
+                    );
                 }
             }
         };
@@ -66,26 +70,48 @@ export default function LivenessVerifyBasicScreen() {
         }
     };
 
+    // Thêm hàm để xử lý khi camera sẵn sàng
+    const handleCameraReady = () => {
+        console.log("Camera sẵn sàng và đã được khởi tạo đầy đủ");
+    };
+
     const startRecordingProcess = async () => {
         try {
             setIsRecording(true);
-            
+
             // Chờ 3 giây trước khi bắt đầu ghi để camera khởi động hoàn toàn
             console.log("Chuẩn bị camera...");
-            await new Promise(resolve => setTimeout(resolve, 3000));
-            
+            await new Promise((resolve) => setTimeout(resolve, 3000));
+
             console.log("Bắt đầu ghi video...");
-            
+
             // Sử dụng try-catch nội bộ để xử lý lỗi ghi video
             let video;
             try {
-                // Sử dụng cấu hình tối thiểu
-                video = await cameraRef.current.recordAsync();
+                // Sử dụng cấu hình cụ thể cho expo-camera 15.0.14
+                video = await cameraRef.current.recordAsync({
+                    maxDuration: 5,
+                    quality: "480p",
+                    mute: false,
+                    mirror: false,
+                });
             } catch (recordError) {
                 console.error("Lỗi khi ghi video:", recordError);
-                throw new Error("Không thể ghi video: " + recordError.message);
+                // Thử lại với cấu hình đơn giản hơn
+                try {
+                    await new Promise((resolve) => setTimeout(resolve, 1000));
+                    video = await cameraRef.current.recordAsync({
+                        maxDuration: 3,
+                        quality: "low",
+                    });
+                } catch (retryError) {
+                    console.error("Lỗi khi thử lại ghi video:", retryError);
+                    throw new Error(
+                        "Không thể ghi video sau nhiều lần thử. Vui lòng thử lại sau."
+                    );
+                }
             }
-            
+
             console.log("Ghi video hoàn tất:", video);
             setIsRecording(false);
 
@@ -165,6 +191,19 @@ export default function LivenessVerifyBasicScreen() {
                 style={styles.camera}
                 type="front"
                 ref={cameraRef}
+                onCameraReady={handleCameraReady}
+                onMountError={(error) => {
+                    console.error("Lỗi khi khởi tạo camera:", error);
+                    Alert.alert(
+                        "Lỗi camera",
+                        "Không thể khởi tạo camera. Vui lòng thử lại sau."
+                    );
+                }}
+                video={{
+                    quality: "480p",
+                    maxDuration: 5,
+                    mute: false,
+                }}
             >
                 <View style={styles.overlay}>
                     <View style={styles.guide}>

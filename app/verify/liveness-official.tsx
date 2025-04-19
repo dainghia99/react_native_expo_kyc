@@ -184,62 +184,93 @@ export default function LivenessVerifyOfficialScreen() {
             console.log("Bắt đầu ghi video...");
 
             // Thêm thời gian chờ dài hơn để đảm bảo camera đã hoàn toàn sẵn sàng
-            await new Promise((resolve) => setTimeout(resolve, 500));
+            await new Promise((resolve) => setTimeout(resolve, 1000));
 
             // Sử dụng try-catch nội bộ để xử lý lỗi ghi video
             let video;
             try {
-                // Sử dụng cấu hình đơn giản nhất có thể
-                video = await cameraRef.current.recordAsync();
+                // Sử dụng cấu hình với các tùy chọn cụ thể cho expo-camera 15.0.14
+                video = await cameraRef.current.recordAsync({
+                    maxDuration: 5,
+                    quality: "480p",
+                    mute: false,
+                    mirror: false,
+                });
 
                 // Nếu không có lỗi, đợi thêm 1 giây để đảm bảo video được lưu đầy đủ
                 await new Promise((resolve) => setTimeout(resolve, 1000));
             } catch (recordError) {
                 console.error("Lỗi khi ghi video:", recordError);
 
-                // Nếu lỗi liên quan đến "Recording was stopped before any data could be produced"
-                if (
-                    recordError.message &&
-                    recordError.message.includes("stopped before any data")
-                ) {
-                    // Thử một cách tiếp cận khác: tạo một hình ảnh thay vì video
-                    try {
-                        const photo = await cameraRef.current.takePictureAsync({
-                            quality: 0.5,
-                            base64: true,
-                        });
+                // Thử lại với cấu hình đơn giản hơn
+                try {
+                    console.log("Thử lại với cấu hình đơn giản hơn...");
+                    // Đảm bảo camera vẫn sẵn sàng
+                    await new Promise((resolve) => setTimeout(resolve, 1000));
 
-                        // Sử dụng hình ảnh thay vì video
-                        const formData = new FormData();
-                        formData.append("image", {
-                            uri: photo.uri,
-                            name: "liveness.jpg",
-                            type: "image/jpeg",
-                        } as any);
+                    // Thử lại với cấu hình tối giản
+                    video = await cameraRef.current.recordAsync({
+                        maxDuration: 3,
+                        quality: "low",
+                    });
 
-                        // Gửi thông báo cho người dùng
-                        Alert.alert(
-                            "Thông báo",
-                            "Không thể ghi video, sử dụng hình ảnh thay thế. Vui lòng nháy mắt trong lúc chụp ảnh.",
-                            [{ text: "OK" }]
-                        );
+                    console.log("Ghi video thành công với cấu hình đơn giản");
+                } catch (retryError) {
+                    console.error("Lỗi khi thử lại ghi video:", retryError);
 
-                        // Gửi hình ảnh để xác thực
-                        const success = await handleVerifyLiveness(formData);
-                        if (success) {
-                            router.back();
+                    // Nếu vẫn lỗi, thử dùng hình ảnh thay thế
+                    if (
+                        recordError.message &&
+                        (recordError.message.includes(
+                            "stopped before any data"
+                        ) ||
+                            retryError.message.includes(
+                                "stopped before any data"
+                            ))
+                    ) {
+                        // Thử một cách tiếp cận khác: tạo một hình ảnh thay vì video
+                        try {
+                            const photo =
+                                await cameraRef.current.takePictureAsync({
+                                    quality: 0.5,
+                                    base64: true,
+                                });
+
+                            // Sử dụng hình ảnh thay vì video
+                            const formData = new FormData();
+                            formData.append("image", {
+                                uri: photo.uri,
+                                name: "liveness.jpg",
+                                type: "image/jpeg",
+                            } as any);
+
+                            // Gửi thông báo cho người dùng
+                            Alert.alert(
+                                "Thông báo",
+                                "Không thể ghi video, sử dụng hình ảnh thay thế. Vui lòng nháy mắt trong lúc chụp ảnh.",
+                                [{ text: "OK" }]
+                            );
+
+                            // Gửi hình ảnh để xác thực
+                            const success = await handleVerifyLiveness(
+                                formData
+                            );
+                            if (success) {
+                                router.back();
+                            }
+                            return; // Thoát khỏi hàm nếu đã xử lý thành công bằng hình ảnh
+                        } catch (photoError) {
+                            console.error("Lỗi khi chụp ảnh:", photoError);
+                            throw new Error(
+                                "Không thể ghi video hoặc chụp ảnh. Vui lòng thử lại sau."
+                            );
                         }
-                        return; // Thoát khỏi hàm nếu đã xử lý thành công bằng hình ảnh
-                    } catch (photoError) {
-                        console.error("Lỗi khi chụp ảnh:", photoError);
+                    } else {
                         throw new Error(
-                            "Không thể ghi video hoặc chụp ảnh. Vui lòng thử lại sau."
+                            "Không thể ghi video: " +
+                                (retryError.message || recordError.message)
                         );
                     }
-                } else {
-                    throw new Error(
-                        "Không thể ghi video: " + recordError.message
-                    );
                 }
             }
 
@@ -280,8 +311,15 @@ export default function LivenessVerifyOfficialScreen() {
                 setIsRecording(false);
             } catch (error) {
                 console.error("Lỗi khi dừng ghi video:", error);
+                // Đặt trạng thái về false ngay cả khi có lỗi
+                setIsRecording(false);
             }
         }
+    };
+
+    // Thêm hàm để xử lý khi camera sẵn sàng
+    const handleCameraReady = () => {
+        console.log("Camera sẵn sàng và đã được khởi tạo đầy đủ");
     };
 
     if (!cameraPermission || !micPermission) {
@@ -326,7 +364,13 @@ export default function LivenessVerifyOfficialScreen() {
                 style={styles.camera}
                 facing="front"
                 ref={cameraRef}
-                onCameraReady={() => console.log("Camera sẵn sàng")}
+                mode="video"
+                video={{
+                    quality: "480p",
+                    maxDuration: 5,
+                    mute: false,
+                }}
+                onCameraReady={handleCameraReady}
                 onMountError={(error) => {
                     console.error("Lỗi khi khởi tạo camera:", error);
                     Alert.alert(

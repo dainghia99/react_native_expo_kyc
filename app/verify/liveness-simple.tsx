@@ -91,6 +91,11 @@ export default function LivenessVerifySimpleScreen() {
         }
     };
 
+    // Thêm hàm để xử lý khi camera sẵn sàng
+    const handleCameraReady = () => {
+        console.log("Camera sẵn sàng và đã được khởi tạo đầy đủ");
+    };
+
     const startRecordingProcess = async () => {
         try {
             setIsRecording(true);
@@ -113,6 +118,7 @@ export default function LivenessVerifySimpleScreen() {
                     maxDuration: 5,
                     quality: VideoQuality["480p"], // Sử dụng chất lượng thấp hơn
                     mute: false, // Đảm bảo ghi âm thanh
+                    mirror: false, // Không lật gương video
                 });
             } catch (recordError) {
                 console.error(
@@ -121,7 +127,17 @@ export default function LivenessVerifySimpleScreen() {
                 );
                 // Chờ thêm 1 giây và thử lại với cấu hình đơn giản hơn
                 await new Promise((resolve) => setTimeout(resolve, 1000));
-                video = await cameraRef.current.recordAsync();
+                try {
+                    video = await cameraRef.current.recordAsync({
+                        maxDuration: 3,
+                        quality: "low",
+                    });
+                } catch (retryError) {
+                    console.error("Lỗi khi thử lại ghi video:", retryError);
+                    throw new Error(
+                        "Không thể ghi video sau nhiều lần thử. Vui lòng thử lại sau."
+                    );
+                }
             }
 
             console.log("Ghi video hoàn tất:", video);
@@ -205,13 +221,19 @@ export default function LivenessVerifySimpleScreen() {
                 ref={cameraRef}
                 ratio="16:9"
                 // Loại bỏ videoStabilizationMode vì có thể không được hỗ trợ
-                onCameraReady={() => console.log("Camera sẵn sàng")}
+                onCameraReady={handleCameraReady}
                 onMountError={(error) => {
                     console.error("Lỗi khi khởi tạo camera:", error);
                     Alert.alert(
                         "Lỗi camera",
                         "Không thể khởi tạo camera. Vui lòng thử lại sau."
                     );
+                }}
+                // Thêm các cấu hình video
+                video={{
+                    quality: VideoQuality["480p"],
+                    maxDuration: 5,
+                    mute: false,
                 }}
             >
                 <View style={styles.overlay}>
