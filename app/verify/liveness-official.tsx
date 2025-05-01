@@ -25,6 +25,8 @@ export default function LivenessVerifyOfficialScreen() {
     const [isRecording, setIsRecording] = useState(false);
     const [countdown, setCountdown] = useState(0);
     const [recordingTimer, setRecordingTimer] = useState(0);
+    const [skipBlinkCheck, setSkipBlinkCheck] = useState(false);
+    const [attemptCount, setAttemptCount] = useState(0);
     const cameraRef = useRef<any>(null);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -152,11 +154,31 @@ export default function LivenessVerifyOfficialScreen() {
         try {
             // Hiển thị hướng dẫn trước khi bắt đầu
             Alert.alert(
-                "Hướng dẫn",
-                "Giữ khuôn mặt trong khung hình và nháy mắt tự nhiên. Quá trình sẽ diễn ra trong 5 giây.",
+                "Hướng dẫn xác minh khuôn mặt",
+                "1. Giữ khuôn mặt ở giữa khung hình\n2. Đảm bảo ánh sáng đầy đủ\n3. NHÁY MẮT RÕ RÀNG ít nhất 1 lần\n4. Quá trình sẽ diễn ra trong 5 giây\n\nLƯU Ý QUAN TRỌNG:\n- Nháy mắt THẬT RÕ RÀNG và TỰ NHIÊN\n- Nháy mắt CHẬM và HOÀN TOÀN (nhắm mắt hoàn toàn rồi mở lại)\n- Nháy cả HAI MẮT (không nháy một mắt)",
                 [
                     {
-                        text: "Bắt đầu",
+                        text: "Xem ví dụ",
+                        onPress: () => {
+                            // Hiển thị hướng dẫn chi tiết hơn
+                            Alert.alert(
+                                "Cách nháy mắt đúng",
+                                "1. Nhìn thẳng vào camera\n2. Nhắm hoàn toàn cả hai mắt trong khoảng 0.5-1 giây\n3. Mở mắt lại bình thường\n4. Lặp lại 1-2 lần nữa\n\nTránh:\n- Nháy mắt quá nhanh\n- Chỉ nháy một mắt\n- Nhắm mắt không hoàn toàn",
+                                [
+                                    {
+                                        text: "Bắt đầu",
+                                        onPress: () => {
+                                            // Bắt đầu đếm ngược 3 giây trước khi ghi
+                                            setCountdown(3);
+                                        },
+                                    },
+                                ]
+                            );
+                        },
+                    },
+                    {
+                        text: "Bắt đầu ngay",
+                        style: "default",
                         onPress: () => {
                             // Bắt đầu đếm ngược 3 giây trước khi ghi
                             setCountdown(3);
@@ -288,7 +310,14 @@ export default function LivenessVerifyOfficialScreen() {
                 type: "video/mp4",
             } as any);
 
-            const success = await handleVerifyLiveness(formData);
+            // Tăng số lần thử
+            setAttemptCount((prev) => prev + 1);
+
+            // Gọi API với tùy chọn bỏ qua kiểm tra nháy mắt nếu được bật
+            const success = await handleVerifyLiveness(
+                formData,
+                skipBlinkCheck
+            );
             if (success) {
                 router.back();
             }
@@ -380,6 +409,100 @@ export default function LivenessVerifyOfficialScreen() {
                 }}
             >
                 <View style={styles.overlay}>
+                    {/* Khung khuôn mặt */}
+                    <View style={styles.faceFrame}>
+                        {/* Viền trên */}
+                        <View style={[styles.frameBorder, styles.topBorder]} />
+                        {/* Viền phải */}
+                        <View
+                            style={[styles.frameBorder, styles.rightBorder]}
+                        />
+                        {/* Viền dưới */}
+                        <View
+                            style={[styles.frameBorder, styles.bottomBorder]}
+                        />
+                        {/* Viền trái */}
+                        <View style={[styles.frameBorder, styles.leftBorder]} />
+
+                        {/* Góc trên bên trái */}
+                        <View
+                            style={[styles.frameCorner, styles.topLeftCorner]}
+                        >
+                            <View
+                                style={[
+                                    styles.cornerHorizontal,
+                                    { top: 0, left: 0 },
+                                ]}
+                            />
+                            <View
+                                style={[
+                                    styles.cornerVertical,
+                                    { top: 0, left: 0 },
+                                ]}
+                            />
+                        </View>
+
+                        {/* Góc trên bên phải */}
+                        <View
+                            style={[styles.frameCorner, styles.topRightCorner]}
+                        >
+                            <View
+                                style={[
+                                    styles.cornerHorizontal,
+                                    { top: 0, right: 0 },
+                                ]}
+                            />
+                            <View
+                                style={[
+                                    styles.cornerVertical,
+                                    { top: 0, right: 0 },
+                                ]}
+                            />
+                        </View>
+
+                        {/* Góc dưới bên trái */}
+                        <View
+                            style={[
+                                styles.frameCorner,
+                                styles.bottomLeftCorner,
+                            ]}
+                        >
+                            <View
+                                style={[
+                                    styles.cornerHorizontal,
+                                    { bottom: 0, left: 0 },
+                                ]}
+                            />
+                            <View
+                                style={[
+                                    styles.cornerVertical,
+                                    { bottom: 0, left: 0 },
+                                ]}
+                            />
+                        </View>
+
+                        {/* Góc dưới bên phải */}
+                        <View
+                            style={[
+                                styles.frameCorner,
+                                styles.bottomRightCorner,
+                            ]}
+                        >
+                            <View
+                                style={[
+                                    styles.cornerHorizontal,
+                                    { bottom: 0, right: 0 },
+                                ]}
+                            />
+                            <View
+                                style={[
+                                    styles.cornerVertical,
+                                    { bottom: 0, right: 0 },
+                                ]}
+                            />
+                        </View>
+                    </View>
+
                     {countdown > 0 && (
                         <View style={styles.countdown}>
                             <Text style={styles.countdownText}>
@@ -392,11 +515,44 @@ export default function LivenessVerifyOfficialScreen() {
                             {countdown > 0
                                 ? "Chuẩn bị... " + countdown
                                 : isRecording
-                                ? `Đang ghi video... Còn lại ${recordingTimer}s. Vui lòng giữ yên và nháy mắt tự nhiên`
+                                ? `Đang ghi video... Còn lại ${recordingTimer}s.`
                                 : isLoading
                                 ? "Đang xử lý video..."
                                 : "Đặt khuôn mặt vào khung hình và nhấn 'Bắt đầu'"}
                         </Text>
+                        {isRecording && (
+                            <Text
+                                style={[
+                                    styles.guideText,
+                                    styles.blinkInstruction,
+                                ]}
+                            >
+                                NHÁY MẮT CHẬM VÀ RÕ RÀNG!
+                            </Text>
+                        )}
+                        {isRecording && (
+                            <Text
+                                style={[
+                                    styles.guideText,
+                                    styles.blinkInstruction,
+                                ]}
+                            >
+                                NHẮM HOÀN TOÀN CẢ HAI MẮT
+                            </Text>
+                        )}
+                        {!isRecording && !isLoading && countdown === 0 && (
+                            <>
+                                <Text style={styles.guideText}>
+                                    Đặt khuôn mặt vào trong khung hình ở trên
+                                </Text>
+                                <Text style={styles.guideText}>
+                                    Đảm bảo ánh sáng đầy đủ và khuôn mặt rõ ràng
+                                </Text>
+                                <Text style={styles.guideTextHighlight}>
+                                    Khi bắt đầu, hãy nháy mắt CHẬM và RÕ RÀNG
+                                </Text>
+                            </>
+                        )}
                     </View>
                 </View>
             </CameraView>
@@ -441,6 +597,25 @@ export default function LivenessVerifyOfficialScreen() {
                 >
                     <Text style={styles.backButtonText}>Quay lại</Text>
                 </TouchableOpacity>
+
+                {/* Hiển thị tùy chọn bỏ qua kiểm tra nháy mắt sau khi thử nhiều lần */}
+                {attemptCount >= 2 && !isRecording && !isLoading && (
+                    <View style={styles.skipContainer}>
+                        <TouchableOpacity
+                            style={styles.skipButton}
+                            onPress={() => setSkipBlinkCheck(!skipBlinkCheck)}
+                        >
+                            <Text style={styles.skipText}>
+                                {skipBlinkCheck ? "✓" : "□"} Bỏ qua kiểm tra
+                                nháy mắt
+                            </Text>
+                        </TouchableOpacity>
+                        <Text style={styles.skipDescription}>
+                            Chỉ sử dụng tùy chọn này nếu bạn gặp khó khăn trong
+                            việc nháy mắt
+                        </Text>
+                    </View>
+                )}
             </View>
         </View>
     );
@@ -457,6 +632,46 @@ const styles = StyleSheet.create({
         paddingTop: 50,
         flexDirection: "row",
         alignItems: "center",
+    },
+    skipContainer: {
+        marginTop: 10,
+        padding: 10,
+        backgroundColor: "#f8f8f8",
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: "#ddd",
+    },
+    skipButton: {
+        flexDirection: "row",
+        alignItems: "center",
+        padding: 5,
+    },
+    skipText: {
+        fontSize: 16,
+        color: Colors().PRIMARY,
+        fontWeight: "500",
+    },
+    skipDescription: {
+        fontSize: 12,
+        color: "#666",
+        marginTop: 5,
+        fontStyle: "italic",
+    },
+    blinkInstruction: {
+        color: "#FFD700", // Màu vàng để nổi bật
+        fontWeight: "bold",
+        fontSize: 20,
+        marginTop: 10,
+        marginBottom: 5,
+        textAlign: "center",
+        textShadowColor: "rgba(0, 0, 0, 0.75)",
+        textShadowOffset: { width: -1, height: 1 },
+        textShadowRadius: 10,
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        paddingVertical: 5,
+        paddingHorizontal: 10,
+        borderRadius: 5,
+        overflow: "hidden",
     },
     backButtonHeader: {
         color: Colors().WHITE,
@@ -476,17 +691,116 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         alignItems: "center",
     },
+    // Styles cho khung khuôn mặt
+    faceFrame: {
+        width: 280,
+        height: 350,
+        position: "relative",
+        marginBottom: 20,
+        borderRadius: 150,
+        borderWidth: 2,
+        borderColor: "rgba(255, 255, 255, 0.3)",
+        overflow: "hidden",
+        // Thêm đổ bóng để nổi bật hơn
+        shadowColor: "#fff",
+        shadowOffset: {
+            width: 0,
+            height: 0,
+        },
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+        // Thêm viền phát sáng
+        borderWidth: 1,
+        borderColor: "rgba(255, 255, 255, 0.5)",
+    },
+    frameBorder: {
+        position: "absolute",
+        borderColor: "rgba(255, 255, 255, 0.7)",
+    },
+    topBorder: {
+        top: 0,
+        left: 70,
+        right: 70,
+        height: 2,
+        borderTopWidth: 2,
+    },
+    rightBorder: {
+        top: 70,
+        right: 0,
+        bottom: 70,
+        width: 2,
+        borderRightWidth: 2,
+    },
+    bottomBorder: {
+        bottom: 0,
+        left: 70,
+        right: 70,
+        height: 2,
+        borderBottomWidth: 2,
+    },
+    leftBorder: {
+        top: 70,
+        left: 0,
+        bottom: 70,
+        width: 2,
+        borderLeftWidth: 2,
+    },
+    frameCorner: {
+        position: "absolute",
+        width: 30,
+        height: 30,
+    },
+    topLeftCorner: {
+        top: 0,
+        left: 0,
+    },
+    topRightCorner: {
+        top: 0,
+        right: 0,
+    },
+    bottomLeftCorner: {
+        bottom: 0,
+        left: 0,
+    },
+    bottomRightCorner: {
+        bottom: 0,
+        right: 0,
+    },
+    cornerHorizontal: {
+        position: "absolute",
+        width: 25,
+        height: 4,
+        backgroundColor: Colors().WHITE,
+    },
+    cornerVertical: {
+        position: "absolute",
+        width: 4,
+        height: 25,
+        backgroundColor: Colors().WHITE,
+    },
     guide: {
         padding: 20,
         backgroundColor: "rgba(0,0,0,0.5)",
         borderRadius: 10,
         marginBottom: 20,
+        width: "90%",
+        maxWidth: 350,
     },
     guideText: {
         color: Colors().WHITE,
         textAlign: "center",
         fontSize: 16,
         marginBottom: 10,
+    },
+    guideTextHighlight: {
+        color: "#FFD700", // Màu vàng để nổi bật
+        textAlign: "center",
+        fontSize: 16,
+        fontWeight: "bold",
+        marginBottom: 10,
+        textShadowColor: "rgba(0, 0, 0, 0.75)",
+        textShadowOffset: { width: -1, height: 1 },
+        textShadowRadius: 5,
     },
     countdown: {
         width: 80,

@@ -4,11 +4,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // Thay đổi IP này thành IP của máy chủ backend của bạn
 // Khi sử dụng Expo App, cần sử dụng địa chỉ IP của máy tính trong cùng mạng
 // Ví dụ: "http://192.168.1.7:5000" (thay bằng IP thực tế của máy tính bạn)
-const API_URL = "http://192.168.1.7:5000"; // Sử dụng IP của máy tính bạn
+const API_URL = "http://192.168.1.6:5000"; // Sử dụng IP của máy tính bạn
 
 const api = axios.create({
     baseURL: API_URL,
-    timeout: 30000, // Tăng thời gian timeout để tránh lỗi mạng
+    timeout: 1800000, // Tăng thời gian timeout để tránh lỗi mạng
     headers: {
         "Content-Type": "application/json",
     },
