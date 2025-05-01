@@ -32,9 +32,10 @@ export default function IDCardFrontScreen() {
         if (!cameraRef.current) return;
 
         try {
+            // Tăng chất lượng ảnh lên tối đa (1.0) để cải thiện OCR
             const photo = await cameraRef.current.takePictureAsync({
-                quality: 0.8,
-                exif: false, // Tắt exif để giảm kích thước
+                quality: 1.0, // Tăng chất lượng lên tối đa
+                exif: false,
             });
             setCapturedImage(photo.uri);
         } catch (error) {
@@ -43,7 +44,9 @@ export default function IDCardFrontScreen() {
 
             // Thử lại với cấu hình đơn giản hơn
             try {
-                const simplePhoto = await cameraRef.current.takePictureAsync();
+                const simplePhoto = await cameraRef.current.takePictureAsync({
+                    quality: 0.9, // Vẫn giữ chất lượng cao
+                });
                 setCapturedImage(simplePhoto.uri);
             } catch (retryError) {
                 console.error("Retry camera error:", retryError);
@@ -61,7 +64,7 @@ export default function IDCardFrontScreen() {
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 allowsEditing: true,
                 aspect: [4, 3],
-                quality: 0.8,
+                quality: 1.0, // Tăng chất lượng lên tối đa
             });
 
             if (!result.canceled) {
@@ -73,10 +76,41 @@ export default function IDCardFrontScreen() {
         }
     };
 
+    const checkImageOrientation = async (uri: string): Promise<boolean> => {
+        return new Promise((resolve) => {
+            Image.getSize(
+                uri,
+                (width, height) => {
+                    // Kiểm tra xem ảnh có ở định dạng dọc không (portrait)
+                    const isPortrait = height > width;
+                    if (!isPortrait) {
+                        Alert.alert(
+                            "Định dạng ảnh không đúng",
+                            "Vui lòng chụp ảnh CCCD ở định dạng dọc (portrait). Hãy xoay điện thoại để chụp ảnh theo chiều dọc.",
+                            [{ text: "OK" }]
+                        );
+                    }
+                    resolve(isPortrait);
+                },
+                (error) => {
+                    console.error("Không thể kiểm tra kích thước ảnh:", error);
+                    // Nếu không thể kiểm tra, vẫn cho phép tải lên
+                    resolve(true);
+                }
+            );
+        });
+    };
+
     const uploadImage = async () => {
         if (!capturedImage) return;
 
         try {
+            // Kiểm tra định dạng ảnh trước khi tải lên
+            const isPortrait = await checkImageOrientation(capturedImage);
+            if (!isPortrait) {
+                return; // Không tiếp tục nếu ảnh không ở định dạng dọc
+            }
+
             const formData = new FormData();
             formData.append("image", {
                 uri: capturedImage,
@@ -105,7 +139,7 @@ export default function IDCardFrontScreen() {
                 "Lỗi",
                 error.message || "Không thể tải lên ảnh. Vui lòng thử lại."
             );
-            console.error("Upload error:", error);
+            console.error("Lỗi Upload:", error);
         }
     };
 
@@ -198,8 +232,22 @@ export default function IDCardFrontScreen() {
                                 <Text style={styles.guideText}>
                                     Đặt mặt trước CCCD vào khung hình
                                 </Text>
+                                <Text style={styles.guideTextHighlight}>
+                                    GIỮ ĐIỆN THOẠI THEO CHIỀU DỌC (PORTRAIT)
+                                </Text>
                                 <Text style={styles.guideText}>
                                     Đảm bảo ảnh rõ nét và đủ ánh sáng
+                                </Text>
+                                <Text style={styles.guideText}>
+                                    Giữ điện thoại ổn định để tránh ảnh bị mờ
+                                </Text>
+                                <Text style={styles.guideText}>
+                                    Tránh chụp trong điều kiện ánh sáng yếu hoặc
+                                    lóa
+                                </Text>
+                                <Text style={styles.guideTextHighlight}>
+                                    Đảm bảo toàn bộ thông tin trên CCCD đều rõ
+                                    ràng
                                 </Text>
                             </View>
                         </View>
@@ -320,6 +368,14 @@ const styles = StyleSheet.create({
         textAlign: "center",
         fontSize: 14,
         marginBottom: 5,
+    },
+    guideTextHighlight: {
+        color: "#FFD700", // Màu vàng để nhấn mạnh
+        textAlign: "center",
+        fontSize: 14,
+        fontWeight: "bold",
+        marginBottom: 5,
+        marginTop: 5,
     },
     controls: {
         padding: 20,
