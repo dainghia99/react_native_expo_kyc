@@ -26,6 +26,9 @@ export default function IDCardFrontScreen() {
         if (!permission?.granted) {
             requestPermission();
         }
+
+        // Đặt cờ xác minh đang hoạt động khi bắt đầu quá trình xác minh
+        AsyncStorage.setItem("active_verification", "true");
     }, [permission]);
 
     const takePicture = async () => {

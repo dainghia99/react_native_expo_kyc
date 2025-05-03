@@ -8,6 +8,7 @@ import {
     ActivityIndicator,
     BackHandler,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import Colors from "@/constants/Colors";
 import { useKYC } from "@/hooks/useKYC";
@@ -278,6 +279,10 @@ export default function LivenessVerifyOfficialScreen() {
                                 formData
                             );
                             if (success) {
+                                // Xóa cờ xác minh đang hoạt động khi hoàn thành
+                                await AsyncStorage.removeItem(
+                                    "active_verification"
+                                );
                                 router.back();
                             }
                             return; // Thoát khỏi hàm nếu đã xử lý thành công bằng hình ảnh
@@ -319,6 +324,8 @@ export default function LivenessVerifyOfficialScreen() {
                 skipBlinkCheck
             );
             if (success) {
+                // Xóa cờ xác minh đang hoạt động khi hoàn thành
+                await AsyncStorage.removeItem("active_verification");
                 router.back();
             }
         } catch (error: any) {

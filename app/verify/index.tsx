@@ -8,6 +8,7 @@ import {
     ActivityIndicator,
     Alert,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useKYC } from "@/hooks/useKYC";
 import Colors from "@/constants/Colors";
@@ -22,6 +23,14 @@ export default function KYCMainScreen() {
 
     useEffect(() => {
         loadKYCStatus();
+
+        // Xóa cờ xác minh đang hoạt động khi vào màn hình chính
+        AsyncStorage.removeItem("active_verification");
+
+        return () => {
+            // Đảm bảo cờ được xóa khi rời khỏi màn hình
+            AsyncStorage.removeItem("active_verification");
+        };
     }, []);
 
     const loadKYCStatus = async () => {
@@ -46,11 +55,15 @@ export default function KYCMainScreen() {
         }
     };
 
-    const handleLivenessVerification = () => {
+    const handleLivenessVerification = async () => {
+        // Đặt cờ xác minh đang hoạt động khi bắt đầu quá trình xác minh
+        await AsyncStorage.setItem("active_verification", "true");
         router.push("/verify/liveness-redirect");
     };
 
-    const handleIDCardVerification = () => {
+    const handleIDCardVerification = async () => {
+        // Đặt cờ xác minh đang hoạt động khi bắt đầu quá trình xác minh
+        await AsyncStorage.setItem("active_verification", "true");
         router.push("/verify/id-card-front");
     };
 

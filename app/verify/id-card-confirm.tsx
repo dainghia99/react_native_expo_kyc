@@ -8,22 +8,103 @@ import {
     ActivityIndicator,
     Alert,
     Image,
+    TextInput,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import Colors from "@/constants/Colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+
+// Hàm định dạng ngày tháng từ chuỗi ngày tháng sang định dạng DD/MM/YYYY
+const formatDate = (dateString) => {
+    if (!dateString) return "";
+
+    try {
+        // Xử lý nhiều định dạng ngày tháng khác nhau
+        let date;
+
+        // Kiểm tra nếu là định dạng GMT
+        if (dateString.includes("GMT")) {
+            date = new Date(dateString);
+        }
+        // Kiểm tra nếu là định dạng DD/MM/YYYY
+        else if (dateString.includes("/")) {
+            const parts = dateString.split("/");
+            // Nếu đã đúng định dạng DD/MM/YYYY thì trả về luôn
+            if (parts.length === 3) {
+                // Kiểm tra xem đã đúng định dạng chưa
+                if (
+                    parts[0].length === 2 &&
+                    parts[1].length === 2 &&
+                    parts[2].length === 4
+                ) {
+                    return dateString;
+                }
+                date = new Date(parts[2], parts[1] - 1, parts[0]);
+            }
+        }
+        // Các định dạng khác
+        else {
+            date = new Date(dateString);
+        }
+
+        // Kiểm tra nếu date không hợp lệ
+        if (isNaN(date.getTime())) {
+            return dateString; // Trả về chuỗi gốc nếu không thể parse
+        }
+
+        // Định dạng thành DD/MM/YYYY
+        const day = String(date.getDate()).padStart(2, "0");
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const year = date.getFullYear();
+
+        return `${day}/${month}/${year}`;
+    } catch (error) {
+        console.error("Error formatting date:", error);
+        return dateString; // Trả về chuỗi gốc nếu có lỗi
+    }
+};
 
 export default function IDCardConfirmScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
     const [loading, setLoading] = useState(true);
     const [idCardInfo, setIdCardInfo] = useState<any>(null);
+    const [editableIdCardInfo, setEditableIdCardInfo] = useState<any>(null);
     const [frontImageUri, setFrontImageUri] = useState<string | null>(null);
     const [backImageUri, setBackImageUri] = useState<string | null>(null);
 
     useEffect(() => {
-        loadIdCardInfo();
+        checkActiveVerification();
     }, []);
+
+    // Kiểm tra xem người dùng có đang trong quá trình xác minh hay không
+    const checkActiveVerification = async () => {
+        try {
+            const isActiveVerification = await AsyncStorage.getItem(
+                "active_verification"
+            );
+
+            if (isActiveVerification === "true") {
+                // Nếu đang trong quá trình xác minh, tải thông tin CCCD
+                loadIdCardInfo();
+            } else {
+                // Nếu không, quay lại màn hình xác minh chính
+                Alert.alert(
+                    "Thông báo",
+                    "Vui lòng bắt đầu quá trình xác minh từ màn hình chính.",
+                    [
+                        {
+                            text: "OK",
+                            onPress: () => router.replace("/verify"),
+                        },
+                    ]
+                );
+            }
+        } catch (error) {
+            console.error("Error checking active verification:", error);
+            router.replace("/verify");
+        }
+    };
 
     const loadIdCardInfo = async () => {
         setLoading(true);
@@ -35,7 +116,21 @@ export default function IDCardConfirmScreen() {
 
             if (idInfoStr) {
                 const idInfo = JSON.parse(idInfoStr);
+
+                // Định dạng lại các trường ngày tháng
+                if (idInfo.date_of_birth) {
+                    idInfo.date_of_birth = formatDate(idInfo.date_of_birth);
+                }
+                if (idInfo.expiry_date) {
+                    idInfo.expiry_date = formatDate(idInfo.expiry_date);
+                }
+                if (idInfo.issue_date) {
+                    idInfo.issue_date = formatDate(idInfo.issue_date);
+                }
+
                 setIdCardInfo(idInfo);
+                // Khởi tạo thông tin có thể chỉnh sửa với dữ liệu ban đầu
+                setEditableIdCardInfo({ ...idInfo });
             } else {
                 // Nếu không có thông tin, quay lại màn hình chụp CCCD
                 Alert.alert(
@@ -63,9 +158,44 @@ export default function IDCardConfirmScreen() {
         }
     };
 
-    const handleConfirm = () => {
-        // Chuyển đến màn hình xác minh khuôn mặt
-        router.push("/verify/liveness-redirect");
+    // Hàm xử lý khi người dùng thay đổi thông tin trong input
+    const handleInputChange = (field: string, value: string) => {
+        setEditableIdCardInfo((prev) => ({
+            ...prev,
+            [field]: value,
+        }));
+    };
+
+    const handleConfirm = async () => {
+        try {
+            // Lưu thông tin đã chỉnh sửa vào AsyncStorage
+            await AsyncStorage.setItem(
+                "id_card_info",
+                JSON.stringify(editableIdCardInfo)
+            );
+
+            // Chuyển đến màn hình xác minh khuôn mặt
+            router.push("/verify/liveness-redirect");
+        } catch (error) {
+            console.error("Error saving edited ID card info:", error);
+            Alert.alert(
+                "Lỗi",
+                "Không thể lưu thông tin CCCD đã chỉnh sửa. Vui lòng thử lại."
+            );
+        }
+    };
+
+    // Hàm xử lý khi người dùng muốn hủy quá trình xác minh
+    const handleCancel = async () => {
+        try {
+            // Xóa cờ xác minh đang hoạt động
+            await AsyncStorage.removeItem("active_verification");
+            // Quay lại màn hình xác minh chính
+            router.replace("/verify");
+        } catch (error) {
+            console.error("Error canceling verification:", error);
+            router.replace("/verify");
+        }
     };
 
     const handleEdit = () => {
@@ -85,7 +215,7 @@ export default function IDCardConfirmScreen() {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()}>
+                <TouchableOpacity onPress={handleCancel}>
                     <Text style={styles.backButton}>← Quay lại</Text>
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Xác nhận thông tin CCCD</Text>
@@ -119,39 +249,68 @@ export default function IDCardConfirmScreen() {
                 <View style={styles.infoCard}>
                     <Text style={styles.infoTitle}>Thông tin CCCD</Text>
 
-                    {idCardInfo && (
+                    <View style={styles.notificationContainer}>
+                        <Text style={styles.notificationText}>
+                            Bạn hãy kiểm tra lại thông tin xem có khớp với thông
+                            tin trong căn cước của bạn không? Nếu không vui lòng
+                            sửa lại. Bạn hãy đảm bảo trung thực thông tin cá
+                            nhân của bạn đúng với thông tin trong căn cước của
+                            bạn, vì thông tin này không được sửa lại. Nếu bạn
+                            khai sai sự thật hoặc có hành vi gian dối thì bạn sẽ
+                            phải tự chịu trách nhiệm trước pháp luật.
+                        </Text>
+                    </View>
+
+                    {editableIdCardInfo && (
                         <View style={styles.infoContent}>
-                            <InfoRow
+                            <EditableInfoRow
                                 label="Số CCCD"
-                                value={idCardInfo.id_number || "Không có"}
+                                value={editableIdCardInfo.id_number || ""}
+                                onChangeText={(text) =>
+                                    handleInputChange("id_number", text)
+                                }
                             />
-                            <InfoRow
+                            <EditableInfoRow
                                 label="Họ và tên"
-                                value={idCardInfo.full_name || "Không có"}
+                                value={editableIdCardInfo.full_name || ""}
+                                onChangeText={(text) =>
+                                    handleInputChange("full_name", text)
+                                }
                             />
-                            <InfoRow
+                            <EditableInfoRow
                                 label="Ngày sinh"
-                                value={idCardInfo.date_of_birth || "Không có"}
+                                value={editableIdCardInfo.date_of_birth || ""}
+                                onChangeText={(text) =>
+                                    handleInputChange("date_of_birth", text)
+                                }
                             />
-                            <InfoRow
+                            <EditableInfoRow
                                 label="Giới tính"
-                                value={idCardInfo.gender || "Không có"}
+                                value={editableIdCardInfo.gender || ""}
+                                onChangeText={(text) =>
+                                    handleInputChange("gender", text)
+                                }
                             />
-                            <InfoRow
+                            <EditableInfoRow
                                 label="Quốc tịch"
-                                value={idCardInfo.nationality || "Không có"}
+                                value={editableIdCardInfo.nationality || ""}
+                                onChangeText={(text) =>
+                                    handleInputChange("nationality", text)
+                                }
                             />
-                            <InfoRow
-                                label="Quê quán"
-                                value={idCardInfo.place_of_origin || "Không có"}
+                            <EditableInfoRow
+                                label="Ngày cấp"
+                                value={editableIdCardInfo.issue_date || ""}
+                                onChangeText={(text) =>
+                                    handleInputChange("issue_date", text)
+                                }
                             />
-                            <InfoRow
-                                label="Nơi thường trú"
-                                value={idCardInfo.place_of_residence || "Không có"}
-                            />
-                            <InfoRow
+                            <EditableInfoRow
                                 label="Ngày hết hạn"
-                                value={idCardInfo.expiry_date || "Không có"}
+                                value={editableIdCardInfo.expiry_date || ""}
+                                onChangeText={(text) =>
+                                    handleInputChange("expiry_date", text)
+                                }
                             />
                         </View>
                     )}
@@ -171,9 +330,7 @@ export default function IDCardConfirmScreen() {
                         style={styles.editButton}
                         onPress={handleEdit}
                     >
-                        <Text style={styles.editButtonText}>
-                            Chụp lại CCCD
-                        </Text>
+                        <Text style={styles.editButtonText}>Chụp lại CCCD</Text>
                     </TouchableOpacity>
                 </View>
             </ScrollView>
@@ -181,13 +338,36 @@ export default function IDCardConfirmScreen() {
     );
 }
 
-// Component hiển thị một dòng thông tin
-const InfoRow = ({ label, value }: { label: string; value: string }) => (
-    <View style={styles.infoRow}>
-        <Text style={styles.infoLabel}>{label}:</Text>
-        <Text style={styles.infoValue}>{value}</Text>
-    </View>
-);
+// Component hiển thị một dòng thông tin có thể chỉnh sửa
+const EditableInfoRow = ({
+    label,
+    value,
+    onChangeText,
+}: {
+    label: string;
+    value: string;
+    onChangeText: (text: string) => void;
+}) => {
+    // Xác định placeholder dựa trên loại trường
+    let placeholder = `Nhập ${label.toLowerCase()}`;
+
+    // Nếu là trường ngày tháng, hiển thị gợi ý định dạng
+    if (label.includes("Ngày")) {
+        placeholder = "DD/MM/YYYY";
+    }
+
+    return (
+        <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>{label}:</Text>
+            <TextInput
+                style={styles.infoInput}
+                value={value}
+                onChangeText={onChangeText}
+                placeholder={placeholder}
+            />
+        </View>
+    );
+};
 
 const styles = StyleSheet.create({
     container: {
@@ -323,5 +503,28 @@ const styles = StyleSheet.create({
         color: Colors().PRIMARY,
         fontSize: 16,
         fontWeight: "bold",
+    },
+    infoInput: {
+        flex: 2,
+        fontSize: 14,
+        color: Colors().BLACK,
+        padding: 5,
+        borderWidth: 1,
+        borderColor: "#e0e0e0",
+        borderRadius: 5,
+        backgroundColor: "#f9f9f9",
+    },
+    notificationContainer: {
+        backgroundColor: "#FFF9C4",
+        padding: 15,
+        borderRadius: 8,
+        marginBottom: 15,
+        borderLeftWidth: 4,
+        borderLeftColor: "#FBC02D",
+    },
+    notificationText: {
+        fontSize: 13,
+        lineHeight: 20,
+        color: "#5D4037",
     },
 });
