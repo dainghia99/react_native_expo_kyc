@@ -44,9 +44,10 @@ export const useKYC = () => {
                 );
 
                 // Kiểm tra cả điểm số liveness và số lần nháy mắt
+                // Đảm bảo số lần nháy mắt đạt yêu cầu tối thiểu (MIN_BLINK_COUNT từ backend)
                 if (
                     result.liveness_score > 0.7 &&
-                    (result.blink_count > 0 || isImage)
+                    (result.blink_count >= 3 || isImage) // MIN_BLINK_COUNT = 3
                 ) {
                     // Giảm ngưỡng xuống 0.7 để phù hợp với backend
                     // Cập nhật trạng thái user nếu xác thực thành công
@@ -264,11 +265,16 @@ export const useKYC = () => {
                 "id_card_verified"
             );
 
+            // Lưu trạng thái liveness_verified từ backend
+            // Lưu ý: Trạng thái liveness_verified đã được cập nhật ở backend để kiểm tra cả điểm số và số lần nháy mắt
+            const liveness_verified = Boolean(status.liveness_verified);
+
             // Chỉ đánh dấu ID card đã xác minh nếu cả hai điều kiện đều đúng:
             // 1. Backend đã có ảnh CCCD (mặt trước và mặt sau)
             // 2. Người dùng đã chủ động xác nhận thông tin CCCD
             return {
                 ...status,
+                liveness_verified: liveness_verified,
                 id_card_verified:
                     status.id_card_verified && idCardVerified === "true",
             };
@@ -282,35 +288,72 @@ export const useKYC = () => {
         }
     }, []);
 
-    // Función para manejar la verificación facial
+    // Hàm xử lý xác minh khuôn mặt
     const handleFaceVerification = useCallback(
         async (selfieFormData: FormData) => {
             setIsLoading(true);
             try {
+                console.log("Bắt đầu xác minh khuôn mặt...");
                 const result = await KYCService.verifyFaceMatch(selfieFormData);
+                console.log("Kết quả xác minh khuôn mặt:", result);
 
                 if (result.match) {
+                    // Hiển thị thông báo thành công với độ tin cậy
+                    const confidenceMessage = result.message
+                        ? `\n\n${result.message}`
+                        : "";
+
                     Alert.alert(
                         "Thành công",
-                        "Xác minh khuôn mặt thành công! Bạn có thể tiếp tục quá trình xác minh."
+                        `Xác minh khuôn mặt thành công! Bạn có thể tiếp tục quá trình xác minh.${confidenceMessage}`
                     );
                     return true;
                 } else {
-                    Alert.alert(
-                        "Thất bại",
-                        "Xác minh khuôn mặt không thành công. Khuôn mặt trong ảnh selfie không khớp với khuôn mặt trong CCCD. Vui lòng thử lại."
-                    );
+                    // Hiển thị thông báo lỗi chi tiết
+                    let errorMessage =
+                        "Xác minh khuôn mặt không thành công. Khuôn mặt trong ảnh selfie không khớp với khuôn mặt trong CCCD.";
+
+                    // Thêm thông tin từ backend nếu có
+                    if (result.message) {
+                        errorMessage += `\n\n${result.message}`;
+                    }
+
+                    // Thêm hướng dẫn cho người dùng
+                    errorMessage +=
+                        "\n\nVui lòng thử lại với các lưu ý sau:\n- Chụp ảnh selfie rõ nét\n- Đảm bảo ánh sáng tốt\n- Đảm bảo bạn đang sử dụng CCCD của chính mình";
+
+                    // Hiển thị thông báo lỗi
+                    Alert.alert("Xác minh không thành công", errorMessage);
                     return false;
                 }
             } catch (error: any) {
-                // Chỉ ghi log lỗi vào console, không hiển thị chi tiết lỗi cho người dùng
+                // Ghi log lỗi vào console
                 console.error("Lỗi xác minh khuôn mặt:", error);
 
-                // Hiển thị thông báo lỗi chung, không hiển thị chi tiết lỗi từ Axios
-                Alert.alert(
-                    "Lỗi xác minh khuôn mặt",
-                    "Không thể xác minh khuôn mặt. Vui lòng thử lại sau."
-                );
+                // Xử lý các loại lỗi khác nhau
+                let errorMessage = "Không thể xác minh khuôn mặt.";
+
+                // Nếu có thông báo lỗi từ backend
+                if (error.response?.data?.error) {
+                    errorMessage = error.response.data.error;
+                }
+
+                // Thêm hướng dẫn dựa trên loại lỗi
+                if (
+                    errorMessage.includes("không tìm thấy khuôn mặt") ||
+                    errorMessage.includes("không thể trích xuất khuôn mặt")
+                ) {
+                    errorMessage +=
+                        "\n\nVui lòng thử lại với ảnh rõ nét hơn và đảm bảo khuôn mặt của bạn hiển thị rõ ràng.";
+                } else if (errorMessage.includes("không khớp")) {
+                    errorMessage +=
+                        "\n\nVui lòng đảm bảo bạn đang sử dụng CCCD của chính mình và chụp ảnh selfie rõ nét.";
+                } else {
+                    errorMessage += "\n\nVui lòng thử lại sau.";
+                }
+
+                // Hiển thị thông báo lỗi
+                Alert.alert("Lỗi xác minh khuôn mặt", errorMessage);
                 return false;
             } finally {
                 setIsLoading(false);
