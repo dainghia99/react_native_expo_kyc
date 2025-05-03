@@ -36,3 +36,21 @@ export const getKYCStatus = async () => {
     const response = await api.get("/kyc/status");
     return response.data;
 };
+
+export const verifyFaceMatch = async (selfieFormData: FormData) => {
+    const response = await api.post(
+        "/face-verification/verify",
+        selfieFormData,
+        {
+            headers: {
+                "Content-Type": "multipart/form-data",
+            },
+        }
+    );
+    return response.data;
+};
+
+export const getFaceVerificationStatus = async () => {
+    const response = await api.get("/face-verification/status");
+    return response.data;
+};

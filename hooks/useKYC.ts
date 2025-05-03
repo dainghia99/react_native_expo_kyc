@@ -275,11 +275,65 @@ export const useKYC = () => {
         }
     }, []);
 
+    // Función para manejar la verificación facial
+    const handleFaceVerification = useCallback(
+        async (selfieFormData: FormData) => {
+            setIsLoading(true);
+            try {
+                const result = await KYCService.verifyFaceMatch(selfieFormData);
+
+                if (result.match) {
+                    Alert.alert(
+                        "Thành công",
+                        "Xác minh khuôn mặt thành công! Bạn có thể tiếp tục quá trình xác minh."
+                    );
+                    return true;
+                } else {
+                    Alert.alert(
+                        "Thất bại",
+                        "Xác minh khuôn mặt không thành công. Khuôn mặt trong ảnh selfie không khớp với khuôn mặt trong CCCD. Vui lòng thử lại."
+                    );
+                    return false;
+                }
+            } catch (error: any) {
+                // Chỉ ghi log lỗi vào console, không hiển thị chi tiết lỗi cho người dùng
+                console.error("Lỗi xác minh khuôn mặt:", error);
+
+                // Hiển thị thông báo lỗi chung, không hiển thị chi tiết lỗi từ Axios
+                Alert.alert(
+                    "Lỗi xác minh khuôn mặt",
+                    "Không thể xác minh khuôn mặt. Vui lòng thử lại sau."
+                );
+                return false;
+            } finally {
+                setIsLoading(false);
+            }
+        },
+        []
+    );
+
+    // Función para verificar el estado de la verificación facial
+    const checkFaceVerificationStatus = useCallback(async () => {
+        try {
+            const status = await KYCService.getFaceVerificationStatus();
+            return status;
+        } catch (error: any) {
+            console.error("Error checking face verification status:", error);
+            return {
+                face_verified: false,
+                face_match: false,
+                selfie_uploaded: false,
+            };
+        }
+    }, []);
+
     return {
         isLoading,
         handleVerifyLiveness,
         handleUploadIDCard,
         handleProcessIDCardDirect,
         checkKYCStatus,
+        handleFaceVerification,
+        checkFaceVerificationStatus,
     };
 };

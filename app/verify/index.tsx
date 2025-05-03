@@ -16,9 +16,14 @@ import { useAuth } from "@/context/AuthContext";
 
 export default function KYCMainScreen() {
     const router = useRouter();
-    const { checkKYCStatus, isLoading: isKYCLoading } = useKYC();
+    const {
+        checkKYCStatus,
+        checkFaceVerificationStatus,
+        isLoading: isKYCLoading,
+    } = useKYC();
     const { user } = useAuth();
     const [kycStatus, setKycStatus] = useState<any>(null);
+    const [faceStatus, setFaceStatus] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -50,9 +55,32 @@ export default function KYCMainScreen() {
     const loadKYCStatus = async () => {
         setLoading(true);
         try {
+            // Tải trạng thái KYC
             const status = await checkKYCStatus();
             console.log("KYC Status:", status);
-            setKycStatus(status);
+
+            // Đảm bảo các giá trị boolean được chuyển đổi sang kiểu boolean JavaScript gốc
+            const processedStatus = {
+                ...status,
+                liveness_verified: Boolean(status.liveness_verified),
+                id_card_verified: Boolean(status.id_card_verified),
+            };
+            setKycStatus(processedStatus);
+
+            // Tải trạng thái xác minh khuôn mặt
+            const faceVerificationStatus = await checkFaceVerificationStatus();
+            console.log("Face Verification Status:", faceVerificationStatus);
+
+            // Đảm bảo các giá trị boolean được chuyển đổi sang kiểu boolean JavaScript gốc
+            const processedFaceStatus = {
+                ...faceVerificationStatus,
+                face_verified: Boolean(faceVerificationStatus.face_verified),
+                face_match: Boolean(faceVerificationStatus.face_match),
+                selfie_uploaded: Boolean(
+                    faceVerificationStatus.selfie_uploaded
+                ),
+            };
+            setFaceStatus(processedFaceStatus);
         } catch (error) {
             console.error("Error loading KYC status:", error);
             Alert.alert(
@@ -63,6 +91,11 @@ export default function KYCMainScreen() {
             setKycStatus({
                 liveness_verified: false,
                 id_card_verified: false,
+            });
+            setFaceStatus({
+                face_verified: false,
+                face_match: false,
+                selfie_uploaded: false,
             });
         } finally {
             setLoading(false);
@@ -81,6 +114,12 @@ export default function KYCMainScreen() {
         router.push("/verify/id-card-front");
     };
 
+    const handleFaceVerification = async () => {
+        // Đặt cờ xác minh đang hoạt động khi bắt đầu quá trình xác minh
+        await AsyncStorage.setItem("active_verification", "true");
+        router.push("/verify/face-verification");
+    };
+
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
@@ -92,6 +131,7 @@ export default function KYCMainScreen() {
 
     const isLivenessVerified = kycStatus?.liveness_verified;
     const isIDCardVerified = kycStatus?.id_card_verified;
+    const isFaceVerified = faceStatus?.face_match;
     const isFullyVerified = user?.kyc_status === "verified";
 
     return (
@@ -151,7 +191,7 @@ export default function KYCMainScreen() {
                     <View
                         style={[
                             styles.stepCard,
-                            isLivenessVerified && styles.completedStepCard,
+                            isFaceVerified && styles.completedStepCard,
                             !isIDCardVerified && styles.disabledStepCard,
                         ]}
                     >
@@ -159,6 +199,52 @@ export default function KYCMainScreen() {
                             <Text style={styles.stepNumber}>2</Text>
                             <Text style={styles.stepTitle}>
                                 Xác minh khuôn mặt
+                            </Text>
+                            {isFaceVerified && (
+                                <Text style={styles.completedBadge}>
+                                    Đã hoàn thành
+                                </Text>
+                            )}
+                        </View>
+                        <Text style={styles.stepDescription}>
+                            Chụp ảnh chân dung để xác minh khuôn mặt của bạn
+                            khớp với CCCD
+                        </Text>
+                        <TouchableOpacity
+                            style={[
+                                styles.stepButton,
+                                (isFaceVerified || !isIDCardVerified) &&
+                                    styles.disabledButton,
+                            ]}
+                            onPress={handleFaceVerification}
+                            disabled={
+                                isFaceVerified ||
+                                !isIDCardVerified ||
+                                isKYCLoading
+                            }
+                        >
+                            <Text style={styles.stepButtonText}>
+                                {isFaceVerified
+                                    ? "Đã xác minh"
+                                    : !isIDCardVerified
+                                    ? "Hoàn thành bước 1 trước"
+                                    : "Xác minh ngay"}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    <View
+                        style={[
+                            styles.stepCard,
+                            isLivenessVerified && styles.completedStepCard,
+                            (!isIDCardVerified || !isFaceVerified) &&
+                                styles.disabledStepCard,
+                        ]}
+                    >
+                        <View style={styles.stepHeader}>
+                            <Text style={styles.stepNumber}>3</Text>
+                            <Text style={styles.stepTitle}>
+                                Xác minh liveness
                             </Text>
                             {isLivenessVerified && (
                                 <Text style={styles.completedBadge}>
@@ -172,13 +258,16 @@ export default function KYCMainScreen() {
                         <TouchableOpacity
                             style={[
                                 styles.stepButton,
-                                (isLivenessVerified || !isIDCardVerified) &&
+                                (isLivenessVerified ||
+                                    !isIDCardVerified ||
+                                    !isFaceVerified) &&
                                     styles.disabledButton,
                             ]}
                             onPress={handleLivenessVerification}
                             disabled={
                                 isLivenessVerified ||
                                 !isIDCardVerified ||
+                                !isFaceVerified ||
                                 isKYCLoading
                             }
                         >
@@ -187,6 +276,8 @@ export default function KYCMainScreen() {
                                     ? "Đã xác minh"
                                     : !isIDCardVerified
                                     ? "Hoàn thành bước 1 trước"
+                                    : !isFaceVerified
+                                    ? "Hoàn thành bước 2 trước"
                                     : "Xác minh ngay"}
                             </Text>
                         </TouchableOpacity>

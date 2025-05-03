@@ -20,7 +20,8 @@ import {
 
 export default function LivenessVerifyOfficialScreen() {
     const router = useRouter();
-    const { handleVerifyLiveness, isLoading } = useKYC();
+    const { handleVerifyLiveness, isLoading, checkFaceVerificationStatus } =
+        useKYC();
     const [cameraPermission, requestCameraPermission] = useCameraPermissions();
     const [micPermission, requestMicPermission] = useMicrophonePermissions();
     const [isRecording, setIsRecording] = useState(false);
@@ -28,10 +29,14 @@ export default function LivenessVerifyOfficialScreen() {
     const [recordingTimer, setRecordingTimer] = useState(0);
     const [skipBlinkCheck, setSkipBlinkCheck] = useState(false);
     const [attemptCount, setAttemptCount] = useState(0);
+    const [loading, setLoading] = useState(true);
     const cameraRef = useRef<any>(null);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
+        // Kiểm tra xem người dùng đã hoàn thành xác minh khuôn mặt chưa
+        checkFaceVerification();
+
         // Kiểm tra và yêu cầu quyền camera và microphone
         if (!cameraPermission?.granted) {
             requestCameraPermission();
@@ -39,7 +44,47 @@ export default function LivenessVerifyOfficialScreen() {
         if (!micPermission?.granted) {
             requestMicPermission();
         }
+    }, []);
 
+    // Kiểm tra xem người dùng đã hoàn thành xác minh khuôn mặt chưa
+    const checkFaceVerification = async () => {
+        try {
+            const faceStatus = await checkFaceVerificationStatus();
+            setLoading(false);
+
+            if (!faceStatus.face_match) {
+                // Nếu chưa xác minh khuôn mặt, chuyển hướng về trang xác minh khuôn mặt
+                Alert.alert(
+                    "Thông báo",
+                    "Bạn cần hoàn thành xác minh khuôn mặt trước khi tiếp tục xác minh liveness.",
+                    [
+                        {
+                            text: "OK",
+                            onPress: () =>
+                                router.replace("/verify/face-verification"),
+                        },
+                    ]
+                );
+            }
+        } catch (error) {
+            console.error("Error checking face verification status:", error);
+            setLoading(false);
+
+            // Nếu có lỗi, cũng chuyển hướng về trang xác minh khuôn mặt
+            Alert.alert(
+                "Lỗi",
+                "Không thể kiểm tra trạng thái xác minh khuôn mặt. Vui lòng thử lại.",
+                [
+                    {
+                        text: "OK",
+                        onPress: () => router.replace("/verify"),
+                    },
+                ]
+            );
+        }
+    };
+
+    useEffect(() => {
         // Cleanup function
         return () => {
             if (isRecording && cameraRef.current) {
@@ -357,6 +402,17 @@ export default function LivenessVerifyOfficialScreen() {
     const handleCameraReady = () => {
         console.log("Camera sẵn sàng và đã được khởi tạo đầy đủ");
     };
+
+    if (loading) {
+        return (
+            <View style={styles.container}>
+                <ActivityIndicator size="large" color={Colors().PRIMARY} />
+                <Text style={styles.text}>
+                    Đang kiểm tra trạng thái xác minh khuôn mặt...
+                </Text>
+            </View>
+        );
+    }
 
     if (!cameraPermission || !micPermission) {
         return (

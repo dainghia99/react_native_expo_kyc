@@ -184,7 +184,8 @@ export default function IDCardConfirmScreen() {
                 [
                     {
                         text: "Tiếp tục",
-                        onPress: () => router.push("/verify/liveness-redirect"),
+                        onPress: () =>
+                            router.push("/verify/face-verification-redirect"),
                     },
                 ]
             );
