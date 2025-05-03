@@ -11,7 +11,7 @@ export const useKYC = () => {
     const { user, login } = useAuth();
 
     const handleVerifyLiveness = useCallback(
-        async (formData: FormData, skipBlinkCheck: boolean = false) => {
+        async (formData: FormData) => {
             setIsLoading(true);
             try {
                 // Kiểm tra xem formData có chứa video hay hình ảnh
@@ -33,16 +33,8 @@ export const useKYC = () => {
                     // result = await KYCService.verifyLivenessWithImage(formData);
                 } else {
                     console.log("Gửi video để xác thực...");
-                    // Thêm tùy chọn bỏ qua kiểm tra nháy mắt
-                    result = await KYCService.verifyLiveness(
-                        formData,
-                        skipBlinkCheck
-                    );
-
-                    // Ghi log nếu đang bỏ qua kiểm tra nháy mắt
-                    if (skipBlinkCheck) {
-                        console.log("Đang bỏ qua kiểm tra nháy mắt...");
-                    }
+                    // Gọi API xác thực liveness
+                    result = await KYCService.verifyLiveness(formData);
                 }
 
                 // Lưu thông tin chi tiết về kết quả để debug
@@ -51,7 +43,11 @@ export const useKYC = () => {
                     JSON.stringify(result, null, 2)
                 );
 
-                if (result.liveness_score > 0.7) {
+                // Kiểm tra cả điểm số liveness và số lần nháy mắt
+                if (
+                    result.liveness_score > 0.7 &&
+                    (result.blink_count > 0 || isImage)
+                ) {
                     // Giảm ngưỡng xuống 0.7 để phù hợp với backend
                     // Cập nhật trạng thái user nếu xác thực thành công
                     if (user) {
@@ -90,21 +86,30 @@ export const useKYC = () => {
                     return true;
                 } else {
                     // Hiển thị thông báo lỗi chi tiết hơn
-                    let errorMessage =
-                        result.rejection_reason ||
-                        "Vui lòng thử lại và đảm bảo:\n- Nháy mắt ít nhất 1 lần\n- Giữ khuôn mặt ở giữa màn hình\n- Ánh sáng đầy đủ";
+                    let errorMessage = "";
+                    let errorTitle = "Thất bại";
 
-                    // Thêm hướng dẫn cụ thể dựa trên loại lỗi
+                    // Xác định lỗi cụ thể dựa trên kết quả
                     if (result.blink_count === 0) {
-                        errorMessage +=
-                            "\n\nHệ thống không phát hiện được nháy mắt. Vui lòng nháy mắt rõ ràng hơn.";
+                        errorTitle = "Xác minh lỗi";
+                        errorMessage =
+                            "Hệ thống không phát hiện được nháy mắt. Vui lòng nháy mắt rõ ràng hơn và thử lại.\n\nLưu ý:\n- Nháy mắt CHẬM và HOÀN TOÀN (nhắm mắt hoàn toàn rồi mở lại)\n- Nháy cả HAI MẮT (không nháy một mắt)";
                     } else if (result.face_detected_frames < 10) {
-                        errorMessage +=
-                            "\n\nHệ thống không phát hiện đủ khung hình có khuôn mặt. Vui lòng đảm bảo khuôn mặt luôn nằm trong khung hình.";
+                        errorMessage =
+                            "Hệ thống không phát hiện đủ khung hình có khuôn mặt. Vui lòng đảm bảo khuôn mặt luôn nằm trong khung hình.";
+                    } else if (result.liveness_score <= 0.7) {
+                        errorMessage = `Điểm số liveness (${result.liveness_score.toFixed(
+                            2
+                        )}) không đạt yêu cầu. Vui lòng thử lại trong môi trường có ánh sáng tốt hơn.`;
+                    } else {
+                        // Trường hợp khác hoặc không xác định được lỗi cụ thể
+                        errorMessage =
+                            result.rejection_reason ||
+                            "Vui lòng thử lại và đảm bảo:\n- Nháy mắt ít nhất 1 lần\n- Giữ khuôn mặt ở giữa màn hình\n- Ánh sáng đầy đủ";
                     }
 
                     Alert.alert(
-                        "Thất bại",
+                        errorTitle,
                         `Xác thực không thành công: ${errorMessage}`
                     );
                     return false;
@@ -117,21 +122,23 @@ export const useKYC = () => {
                     error.response?.data?.error ||
                     "Không thể xác thực KYC. Vui lòng thử lại.";
                 let errorDetails = error.response?.data?.details || "";
+                let errorTitle = "Lỗi xác thực";
 
                 // Thêm hướng dẫn cụ thể dựa trên loại lỗi
                 if (errorMessage.includes("khuôn mặt")) {
                     errorMessage +=
                         "\n\nĐảm bảo khuôn mặt của bạn được chiếu sáng tốt và nằm trong khung hình.";
                 } else if (errorMessage.includes("nháy mắt")) {
-                    errorMessage +=
-                        "\n\nHãy nháy mắt rõ ràng và tự nhiên khi quay video.";
+                    errorTitle = "Xác minh lỗi";
+                    errorMessage =
+                        "Hệ thống không phát hiện được nháy mắt. Vui lòng nháy mắt rõ ràng hơn và thử lại.\n\nLưu ý:\n- Nháy mắt CHẬM và HOÀN TOÀN (nhắm mắt hoàn toàn rồi mở lại)\n- Nháy cả HAI MẮT (không nháy một mắt)";
                 } else if (errorMessage.includes("video")) {
                     errorMessage +=
                         "\n\nHãy thử lại trong môi trường có ánh sáng tốt hơn.";
                 }
 
                 Alert.alert(
-                    "Lỗi xác thực",
+                    errorTitle,
                     errorMessage,
                     [
                         {

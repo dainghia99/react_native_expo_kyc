@@ -27,7 +27,6 @@ export default function LivenessVerifyOfficialScreen() {
     const [isRecording, setIsRecording] = useState(false);
     const [countdown, setCountdown] = useState(0);
     const [recordingTimer, setRecordingTimer] = useState(0);
-    const [skipBlinkCheck, setSkipBlinkCheck] = useState(false);
     const [attemptCount, setAttemptCount] = useState(0);
     const [loading, setLoading] = useState(true);
     const cameraRef = useRef<any>(null);
@@ -363,11 +362,8 @@ export default function LivenessVerifyOfficialScreen() {
             // Tăng số lần thử
             setAttemptCount((prev) => prev + 1);
 
-            // Gọi API với tùy chọn bỏ qua kiểm tra nháy mắt nếu được bật
-            const success = await handleVerifyLiveness(
-                formData,
-                skipBlinkCheck
-            );
+            // Gọi API xác thực liveness
+            const success = await handleVerifyLiveness(formData);
             if (success) {
                 // Xóa cờ xác minh đang hoạt động khi hoàn thành
                 await AsyncStorage.removeItem("active_verification");
@@ -660,25 +656,6 @@ export default function LivenessVerifyOfficialScreen() {
                 >
                     <Text style={styles.backButtonText}>Quay lại</Text>
                 </TouchableOpacity>
-
-                {/* Hiển thị tùy chọn bỏ qua kiểm tra nháy mắt sau khi thử nhiều lần */}
-                {attemptCount >= 2 && !isRecording && !isLoading && (
-                    <View style={styles.skipContainer}>
-                        <TouchableOpacity
-                            style={styles.skipButton}
-                            onPress={() => setSkipBlinkCheck(!skipBlinkCheck)}
-                        >
-                            <Text style={styles.skipText}>
-                                {skipBlinkCheck ? "✓" : "□"} Bỏ qua kiểm tra
-                                nháy mắt
-                            </Text>
-                        </TouchableOpacity>
-                        <Text style={styles.skipDescription}>
-                            Chỉ sử dụng tùy chọn này nếu bạn gặp khó khăn trong
-                            việc nháy mắt
-                        </Text>
-                    </View>
-                )}
             </View>
         </View>
     );
@@ -696,30 +673,7 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
     },
-    skipContainer: {
-        marginTop: 10,
-        padding: 10,
-        backgroundColor: "#f8f8f8",
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: "#ddd",
-    },
-    skipButton: {
-        flexDirection: "row",
-        alignItems: "center",
-        padding: 5,
-    },
-    skipText: {
-        fontSize: 16,
-        color: Colors().PRIMARY,
-        fontWeight: "500",
-    },
-    skipDescription: {
-        fontSize: 12,
-        color: "#666",
-        marginTop: 5,
-        fontStyle: "italic",
-    },
+
     blinkInstruction: {
         color: "#FFD700", // Màu vàng để nổi bật
         fontWeight: "bold",

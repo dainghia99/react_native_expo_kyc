@@ -1,14 +1,7 @@
 import api from "./api";
 
-export const verifyLiveness = async (
-    videoFormData: FormData,
-    skipBlinkCheck: boolean = false
-) => {
-    const url = skipBlinkCheck
-        ? "/kyc/verify/liveness?skip_blink_check=true"
-        : "/kyc/verify/liveness";
-
-    const response = await api.post(url, videoFormData, {
+export const verifyLiveness = async (videoFormData: FormData) => {
+    const response = await api.post("/kyc/verify/liveness", videoFormData, {
         headers: {
             "Content-Type": "multipart/form-data",
         },
