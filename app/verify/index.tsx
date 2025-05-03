@@ -24,8 +24,22 @@ export default function KYCMainScreen() {
     useEffect(() => {
         loadKYCStatus();
 
-        // Xóa cờ xác minh đang hoạt động khi vào màn hình chính
+        // Xóa các cờ xác minh khi vào màn hình chính
         AsyncStorage.removeItem("active_verification");
+
+        // Kiểm tra xem người dùng có đang quay lại từ quá trình xác minh không
+        const checkVerificationStatus = async () => {
+            const isVerifying = await AsyncStorage.getItem(
+                "active_verification"
+            );
+            if (!isVerifying) {
+                // Nếu không đang trong quá trình xác minh, xóa cờ xác nhận ID card
+                // để đảm bảo người dùng phải chủ động xác nhận lại
+                await AsyncStorage.removeItem("id_card_verified");
+            }
+        };
+
+        checkVerificationStatus();
 
         return () => {
             // Đảm bảo cờ được xóa khi rời khỏi màn hình
@@ -189,7 +203,7 @@ export default function KYCMainScreen() {
                         </Text>
                         <TouchableOpacity
                             style={styles.homeButton}
-                            onPress={() => router.push("/home/home")}
+                            onPress={() => router.replace("/home/home")}
                         >
                             <Text style={styles.homeButtonText}>
                                 Về trang chủ

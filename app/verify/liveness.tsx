@@ -169,10 +169,9 @@ export default function LivenessVerifyScreen() {
                 type: "video/mp4",
             } as any); // Cast to any để tránh lỗi kiểu dữ liệu FormData
 
-            const success = await handleVerifyLiveness(formData);
-            if (success) {
-                router.back();
-            }
+            // Gọi hàm xác minh khuôn mặt
+            // Lưu ý: handleVerifyLiveness sẽ tự động chuyển hướng về trang chủ nếu thành công
+            await handleVerifyLiveness(formData);
         } catch (error: any) {
             console.error("Liveness check error:", error);
             Alert.alert(

@@ -4,6 +4,7 @@ import { Alert } from "react-native";
 import * as KYCService from "@/services/kyc";
 import * as OCRService from "@/services/ocr";
 import { useAuth } from "@/context/AuthContext";
+import { router } from "expo-router";
 
 export const useKYC = () => {
     const [isLoading, setIsLoading] = useState(false);
@@ -59,13 +60,32 @@ export const useKYC = () => {
                             (await AsyncStorage.getItem("token")) || "";
                         await login(token, updatedUser);
                     }
+
+                    // Hiển thị thông báo thành công và chuyển về trang chủ
                     Alert.alert(
                         "Thành công",
                         isImage
-                            ? "Xác thực bằng hình ảnh thành công!"
+                            ? "Xác thực bằng hình ảnh thành công! Bạn sẽ được chuyển về trang chủ."
                             : `Xác thực thành công!\nSố lần nháy mắt: ${
                                   result.blink_count
-                              }\nĐiểm số: ${result.liveness_score.toFixed(2)}`
+                              }\nĐiểm số: ${result.liveness_score.toFixed(
+                                  2
+                              )}\n\nBạn sẽ được chuyển về trang chủ.`,
+                        [
+                            {
+                                text: "OK",
+                                onPress: () => {
+                                    // Xóa cờ xác minh đang hoạt động
+                                    AsyncStorage.removeItem(
+                                        "active_verification"
+                                    );
+                                    // Xóa cờ xác nhận ID card
+                                    AsyncStorage.removeItem("id_card_verified");
+                                    // Chuyển về trang chủ
+                                    router.replace("/home/home");
+                                },
+                            },
+                        ]
                     );
                     return true;
                 } else {
@@ -229,8 +249,22 @@ export const useKYC = () => {
 
     const checkKYCStatus = useCallback(async () => {
         try {
+            // Lấy trạng thái từ API
             const status = await KYCService.getKYCStatus();
-            return status;
+
+            // Kiểm tra xem người dùng đã xác nhận ID card chưa
+            const idCardVerified = await AsyncStorage.getItem(
+                "id_card_verified"
+            );
+
+            // Chỉ đánh dấu ID card đã xác minh nếu cả hai điều kiện đều đúng:
+            // 1. Backend đã có ảnh CCCD (mặt trước và mặt sau)
+            // 2. Người dùng đã chủ động xác nhận thông tin CCCD
+            return {
+                ...status,
+                id_card_verified:
+                    status.id_card_verified && idCardVerified === "true",
+            };
         } catch (error: any) {
             console.error("Error checking KYC status:", error);
             // Trả về trạng thái mặc định để tránh lỗi giao diện

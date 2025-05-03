@@ -174,8 +174,20 @@ export default function IDCardConfirmScreen() {
                 JSON.stringify(editableIdCardInfo)
             );
 
-            // Chuyển đến màn hình xác minh khuôn mặt
-            router.push("/verify/liveness-redirect");
+            // Đặt cờ xác nhận ID card
+            await AsyncStorage.setItem("id_card_verified", "true");
+
+            // Hiển thị thông báo xác nhận
+            Alert.alert(
+                "Thành công",
+                "Đã xác nhận thông tin CCCD thành công. Bạn có thể tiếp tục xác minh khuôn mặt.",
+                [
+                    {
+                        text: "Tiếp tục",
+                        onPress: () => router.push("/verify/liveness-redirect"),
+                    },
+                ]
+            );
         } catch (error) {
             console.error("Error saving edited ID card info:", error);
             Alert.alert(
@@ -190,6 +202,8 @@ export default function IDCardConfirmScreen() {
         try {
             // Xóa cờ xác minh đang hoạt động
             await AsyncStorage.removeItem("active_verification");
+            // Xóa cờ xác nhận ID card
+            await AsyncStorage.removeItem("id_card_verified");
             // Quay lại màn hình xác minh chính
             router.replace("/verify");
         } catch (error) {
