@@ -42,8 +42,11 @@ export default function IDCardFrontScreen() {
             });
             setCapturedImage(photo.uri);
         } catch (error) {
-            Alert.alert("Lỗi", "Không thể chụp ảnh. Vui lòng thử lại.");
+            // Chỉ ghi log lỗi vào console, không hiển thị chi tiết lỗi
             console.error("Camera error:", error);
+
+            // Hiển thị thông báo lỗi chung
+            Alert.alert("Lỗi", "Không thể chụp ảnh. Vui lòng thử lại.");
 
             // Thử lại với cấu hình đơn giản hơn
             try {
@@ -52,7 +55,10 @@ export default function IDCardFrontScreen() {
                 });
                 setCapturedImage(simplePhoto.uri);
             } catch (retryError) {
+                // Chỉ ghi log lỗi vào console, không hiển thị chi tiết lỗi
                 console.error("Retry camera error:", retryError);
+
+                // Hiển thị thông báo lỗi chung
                 Alert.alert(
                     "Lỗi camera",
                     "Không thể chụp ảnh. Vui lòng sử dụng tính năng chọn từ thư viện."
@@ -74,8 +80,11 @@ export default function IDCardFrontScreen() {
                 setCapturedImage(result.assets[0].uri);
             }
         } catch (error) {
+            // Chỉ ghi log lỗi vào console, không hiển thị chi tiết lỗi
+            console.error("Error picking image:", error);
+
+            // Hiển thị thông báo lỗi chung
             Alert.alert("Lỗi", "Không thể chọn ảnh. Vui lòng thử lại.");
-            console.error(error);
         }
     };
 
@@ -138,11 +147,17 @@ export default function IDCardFrontScreen() {
                 router.push("/verify/id-card-back");
             }
         } catch (error: any) {
+            // Chỉ ghi log lỗi vào console, không hiển thị chi tiết lỗi
+            console.error("Lỗi Upload:", error);
+            if (error.response?.data) {
+                console.error("Error response data:", error.response.data);
+            }
+
+            // Hiển thị thông báo lỗi chung
             Alert.alert(
                 "Lỗi",
-                error.message || "Không thể tải lên ảnh. Vui lòng thử lại."
+                "Không thể tải lên ảnh. Vui lòng thử lại với ảnh chất lượng tốt hơn."
             );
-            console.error("Lỗi Upload:", error);
         }
     };
 

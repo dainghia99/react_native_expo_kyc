@@ -116,44 +116,22 @@ export const useKYC = () => {
                     return false;
                 }
             } catch (error: any) {
+                // Chỉ ghi log lỗi vào console, không hiển thị chi tiết lỗi từ API
                 console.error("Lỗi xác thực:", error);
-
-                // Hiển thị thông báo lỗi chi tiết hơn
-                let errorMessage =
-                    error.response?.data?.error ||
-                    "Không thể xác thực KYC. Vui lòng thử lại.";
-                let errorDetails = error.response?.data?.details || "";
-                let errorTitle = "Lỗi xác thực";
-
-                // Thêm hướng dẫn cụ thể dựa trên loại lỗi
-                if (errorMessage.includes("khuôn mặt")) {
-                    errorMessage +=
-                        "\n\nĐảm bảo khuôn mặt của bạn được chiếu sáng tốt và nằm trong khung hình.";
-                } else if (errorMessage.includes("nháy mắt")) {
-                    errorTitle = "Xác minh lỗi";
-                    errorMessage =
-                        "Hệ thống không phát hiện được nháy mắt. Vui lòng nháy mắt rõ ràng hơn và thử lại.\n\nLưu ý:\n- Nháy mắt CHẬM và HOÀN TOÀN (nhắm mắt hoàn toàn rồi mở lại)\n- Nháy cả HAI MẮT (không nháy một mắt)";
-                } else if (errorMessage.includes("video")) {
-                    errorMessage +=
-                        "\n\nHãy thử lại trong môi trường có ánh sáng tốt hơn.";
+                if (error.response?.data) {
+                    console.error("Error response data:", error.response.data);
                 }
 
+                // Hiển thị thông báo lỗi chung, không hiển thị chi tiết lỗi từ API
                 Alert.alert(
-                    errorTitle,
-                    errorMessage,
+                    "Lỗi xác thực",
+                    "Không thể hoàn thành xác thực. Vui lòng thử lại sau.",
                     [
                         {
-                            text: "Thử lại",
+                            text: "Đã hiểu",
                             style: "default",
                         },
-                        errorDetails
-                            ? {
-                                  text: "Xem chi tiết lỗi",
-                                  onPress: () =>
-                                      Alert.alert("Chi tiết lỗi", errorDetails),
-                              }
-                            : undefined,
-                    ].filter(Boolean) as any
+                    ]
                 );
                 return false;
             } finally {
@@ -187,28 +165,23 @@ export const useKYC = () => {
 
                 return result.id_info;
             } catch (error: any) {
-                // Kiểm tra xem có phải lỗi cần upload lại không
-                if (error.response?.data?.need_reupload) {
-                    // Hiển thị thông báo chi tiết hơn với hướng dẫn cụ thể
-                    Alert.alert(
-                        "Cần chụp lại ảnh",
-                        error.response?.data?.message ||
-                            "Không thể trích xuất thông tin từ ảnh. Vui lòng chụp lại ảnh CCCD với chất lượng tốt hơn.",
-                        [
-                            {
-                                text: "Đã hiểu",
-                                style: "default",
-                            },
-                        ]
-                    );
-                } else {
-                    // Hiển thị thông báo lỗi thông thường
-                    Alert.alert(
-                        "Lỗi",
-                        error.response?.data?.error ||
-                            "Không thể tải lên ảnh CCCD. Vui lòng thử lại."
-                    );
+                // Chỉ ghi log lỗi vào console, không hiển thị chi tiết lỗi từ API
+                console.error("Lỗi tải lên ảnh CCCD:", error);
+                if (error.response?.data) {
+                    console.error("Error response data:", error.response.data);
                 }
+
+                // Hiển thị thông báo lỗi chung, không hiển thị chi tiết lỗi từ API
+                Alert.alert(
+                    "Lỗi",
+                    "Không thể tải lên ảnh CCCD. Vui lòng thử lại với ảnh chất lượng tốt hơn.",
+                    [
+                        {
+                            text: "Đã hiểu",
+                            style: "default",
+                        },
+                    ]
+                );
                 return null;
             } finally {
                 setIsLoading(false);
@@ -233,20 +206,17 @@ export const useKYC = () => {
                 );
                 return result.id_info;
             } catch (error: any) {
-                // Kiểm tra xem có phải lỗi cần upload lại không
-                if (error.response?.data?.need_reupload) {
-                    Alert.alert(
-                        "Cần chụp lại ảnh",
-                        error.response?.data?.message ||
-                            "Không thể trích xuất thông tin từ ảnh. Vui lòng chụp lại ảnh CCCD với chất lượng tốt hơn."
-                    );
-                } else {
-                    Alert.alert(
-                        "Lỗi",
-                        error.response?.data?.error ||
-                            "Không thể xử lý ảnh CCCD. Vui lòng thử lại."
-                    );
+                // Chỉ ghi log lỗi vào console, không hiển thị chi tiết lỗi từ API
+                console.error("Lỗi xử lý ảnh CCCD:", error);
+                if (error.response?.data) {
+                    console.error("Error response data:", error.response.data);
                 }
+
+                // Hiển thị thông báo lỗi chung, không hiển thị chi tiết lỗi từ API
+                Alert.alert(
+                    "Lỗi",
+                    "Không thể xử lý ảnh CCCD. Vui lòng thử lại với ảnh chất lượng tốt hơn."
+                );
                 return null;
             } finally {
                 setIsLoading(false);
@@ -327,33 +297,17 @@ export const useKYC = () => {
                     return false;
                 }
             } catch (error: any) {
-                // Ghi log lỗi vào console
+                // Chỉ ghi log lỗi vào console, không hiển thị chi tiết lỗi từ API
                 console.error("Lỗi xác minh khuôn mặt:", error);
-
-                // Xử lý các loại lỗi khác nhau
-                let errorMessage = "Không thể xác minh khuôn mặt.";
-
-                // Nếu có thông báo lỗi từ backend
-                if (error.response?.data?.error) {
-                    errorMessage = error.response.data.error;
+                if (error.response?.data) {
+                    console.error("Error response data:", error.response.data);
                 }
 
-                // Thêm hướng dẫn dựa trên loại lỗi
-                if (
-                    errorMessage.includes("không tìm thấy khuôn mặt") ||
-                    errorMessage.includes("không thể trích xuất khuôn mặt")
-                ) {
-                    errorMessage +=
-                        "\n\nVui lòng thử lại với ảnh rõ nét hơn và đảm bảo khuôn mặt của bạn hiển thị rõ ràng.";
-                } else if (errorMessage.includes("không khớp")) {
-                    errorMessage +=
-                        "\n\nVui lòng đảm bảo bạn đang sử dụng CCCD của chính mình và chụp ảnh selfie rõ nét.";
-                } else {
-                    errorMessage += "\n\nVui lòng thử lại sau.";
-                }
-
-                // Hiển thị thông báo lỗi
-                Alert.alert("Lỗi xác minh khuôn mặt", errorMessage);
+                // Hiển thị thông báo lỗi chung, không hiển thị chi tiết lỗi từ API
+                Alert.alert(
+                    "Lỗi xác minh khuôn mặt",
+                    "Không thể xác minh khuôn mặt. Vui lòng thử lại với ảnh rõ nét hơn."
+                );
                 return false;
             } finally {
                 setIsLoading(false);
@@ -362,13 +316,16 @@ export const useKYC = () => {
         []
     );
 
-    // Función para verificar el estado de la verificación facial
+    // Hàm kiểm tra trạng thái xác minh khuôn mặt
     const checkFaceVerificationStatus = useCallback(async () => {
         try {
             const status = await KYCService.getFaceVerificationStatus();
             return status;
         } catch (error: any) {
+            // Chỉ ghi log lỗi vào console, không hiển thị trên giao diện
             console.error("Error checking face verification status:", error);
+
+            // Trả về trạng thái mặc định để tránh lỗi giao diện
             return {
                 face_verified: false,
                 face_match: false,

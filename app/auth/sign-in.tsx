@@ -42,10 +42,13 @@ export default function SignInScreen() {
             }
             router.replace("/home/home");
         } catch (err: any) {
+            // Chỉ ghi log lỗi vào console, không hiển thị thông báo lỗi chi tiết
             console.error("Login error:", err.response?.data);
+
+            // Hiển thị thông báo lỗi chung, không hiển thị chi tiết lỗi từ API
             Alert.alert(
                 "Lỗi đăng nhập",
-                err.response?.data?.error || "Đã có lỗi xảy ra"
+                "Không thể đăng nhập. Vui lòng kiểm tra thông tin đăng nhập và thử lại."
             );
         } finally {
             setIsLoading(false);

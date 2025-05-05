@@ -66,20 +66,12 @@ export default function LivenessVerifyOfficialScreen() {
                 );
             }
         } catch (error) {
+            // Chỉ ghi log lỗi vào console, không hiển thị thông báo lỗi
             console.error("Error checking face verification status:", error);
             setLoading(false);
 
-            // Nếu có lỗi, cũng chuyển hướng về trang xác minh khuôn mặt
-            Alert.alert(
-                "Lỗi",
-                "Không thể kiểm tra trạng thái xác minh khuôn mặt. Vui lòng thử lại.",
-                [
-                    {
-                        text: "OK",
-                        onPress: () => router.replace("/verify"),
-                    },
-                ]
-            );
+            // Chuyển hướng người dùng về trang xác minh chính mà không hiển thị thông báo lỗi
+            router.replace("/verify");
         }
     };
 

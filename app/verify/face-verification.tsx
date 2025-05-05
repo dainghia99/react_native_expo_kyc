@@ -38,8 +38,11 @@ export default function FaceVerificationScreen() {
             });
             setCapturedImage(photo.uri);
         } catch (error) {
-            Alert.alert("Lỗi", "Không thể chụp ảnh. Vui lòng thử lại.");
+            // Chỉ ghi log lỗi vào console, không hiển thị chi tiết lỗi
             console.error("Camera error:", error);
+
+            // Hiển thị thông báo lỗi chung
+            Alert.alert("Lỗi", "Không thể chụp ảnh. Vui lòng thử lại.");
 
             // Thử lại với cấu hình đơn giản hơn
             try {
@@ -48,7 +51,10 @@ export default function FaceVerificationScreen() {
                 });
                 setCapturedImage(simplePhoto.uri);
             } catch (retryError) {
+                // Chỉ ghi log lỗi vào console, không hiển thị chi tiết lỗi
                 console.error("Retry camera error:", retryError);
+
+                // Hiển thị thông báo lỗi chung
                 Alert.alert(
                     "Lỗi camera",
                     "Không thể chụp ảnh. Vui lòng thử lại sau."

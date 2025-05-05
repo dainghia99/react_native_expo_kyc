@@ -36,12 +36,32 @@ api.interceptors.request.use(
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
-        if (error.response?.status === 401) {
-            // Token expired or invalid
-            await AsyncStorage.removeItem("token");
-            await AsyncStorage.removeItem("user");
-            // You might want to trigger a navigation to login screen here
+        // Ghi log lỗi vào console thay vì hiển thị trên giao diện
+        console.error("Axios error:", error);
+
+        // Ghi log thêm thông tin chi tiết về lỗi nếu có
+        if (error.response) {
+            // Lỗi từ phản hồi của server
+            console.error("Error response data:", error.response.data);
+            console.error("Error response status:", error.response.status);
+            console.error("Error response headers:", error.response.headers);
+
+            // Xử lý lỗi 401 (Unauthorized)
+            if (error.response.status === 401) {
+                // Token expired or invalid
+                await AsyncStorage.removeItem("token");
+                await AsyncStorage.removeItem("user");
+                // You might want to trigger a navigation to login screen here
+            }
+        } else if (error.request) {
+            // Yêu cầu đã được gửi nhưng không nhận được phản hồi
+            console.error("Error request:", error.request);
+        } else {
+            // Lỗi khi thiết lập yêu cầu
+            console.error("Error message:", error.message);
         }
+
+        // Vẫn trả về lỗi để các hàm gọi API có thể xử lý
         return Promise.reject(error);
     }
 );

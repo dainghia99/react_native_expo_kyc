@@ -82,11 +82,9 @@ export default function KYCMainScreen() {
             };
             setFaceStatus(processedFaceStatus);
         } catch (error) {
+            // Chỉ ghi log lỗi vào console, không hiển thị thông báo lỗi trên giao diện
             console.error("Error loading KYC status:", error);
-            Alert.alert(
-                "Lỗi",
-                "Không thể tải thông tin KYC. Vui lòng thử lại sau."
-            );
+
             // Đặt trạng thái mặc định để tránh lỗi giao diện
             setKycStatus({
                 liveness_verified: false,

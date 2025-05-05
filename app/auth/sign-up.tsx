@@ -40,8 +40,13 @@ export default function SignUpScreen() {
             alert("Đăng ký thành công! Vui lòng đăng nhập.");
             router.push("/auth/sign-in");
         } catch (err: any) {
+            // Chỉ ghi log lỗi vào console, không hiển thị chi tiết lỗi từ API
             console.error("Register error:", err.response?.data);
-            setError(err.response?.data?.error || "Đăng ký thất bại");
+
+            // Hiển thị thông báo lỗi chung, không hiển thị chi tiết lỗi từ API
+            setError(
+                "Không thể đăng ký. Vui lòng kiểm tra thông tin và thử lại sau."
+            );
         }
     };
 
