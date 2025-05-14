@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Alert } from "react-native";
 import * as KYCService from "@/services/kyc";
 import * as OCRService from "@/services/ocr";
+import { confirmIdCardInfo as confirmIdCardInfoAPI } from "@/services/confirmIdCard";
 import { useAuth } from "@/context/AuthContext";
 import { router } from "expo-router";
 
@@ -334,6 +335,23 @@ export const useKYC = () => {
         }
     }, []);
 
+    // Hàm xác nhận thông tin CCCD
+    const confirmIdCardInfo = useCallback(async (identityInfo: any) => {
+        setIsLoading(true);
+        try {
+            const result = await confirmIdCardInfoAPI(identityInfo);
+            return result;
+        } catch (error: any) {
+            console.error("Error confirming ID card info:", error);
+            if (error.response?.data) {
+                console.error("Error response data:", error.response.data);
+            }
+            throw error;
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
     return {
         isLoading,
         handleVerifyLiveness,
@@ -342,5 +360,6 @@ export const useKYC = () => {
         checkKYCStatus,
         handleFaceVerification,
         checkFaceVerificationStatus,
+        confirmIdCardInfo,
     };
 };

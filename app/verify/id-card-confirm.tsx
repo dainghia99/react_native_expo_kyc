@@ -13,6 +13,7 @@ import {
 import { useRouter, useLocalSearchParams } from "expo-router";
 import Colors from "@/constants/Colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useKYC } from "@/hooks/useKYC";
 
 // Hàm định dạng ngày tháng từ chuỗi ngày tháng sang định dạng DD/MM/YYYY
 const formatDate = (dateString) => {
@@ -67,6 +68,7 @@ const formatDate = (dateString) => {
 export default function IDCardConfirmScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
+    const { confirmIdCardInfo, isLoading } = useKYC();
     const [loading, setLoading] = useState(true);
     const [idCardInfo, setIdCardInfo] = useState<any>(null);
     const [editableIdCardInfo, setEditableIdCardInfo] = useState<any>(null);
@@ -168,6 +170,31 @@ export default function IDCardConfirmScreen() {
 
     const handleConfirm = async () => {
         try {
+            // Kiểm tra các trường bắt buộc
+            const requiredFields = [
+                "id_number",
+                "full_name",
+                "gender",
+                "nationality",
+                "issue_date",
+                "expiry_date",
+                "date_of_birth",
+            ];
+            const missingFields = requiredFields.filter(
+                (field) => !editableIdCardInfo[field]
+            );
+
+            if (missingFields.length > 0) {
+                Alert.alert(
+                    "Thiếu thông tin",
+                    `Vui lòng điền đầy đủ thông tin: ${missingFields.join(
+                        ", "
+                    )}`,
+                    [{ text: "Đã hiểu" }]
+                );
+                return;
+            }
+
             // Lưu thông tin đã chỉnh sửa vào AsyncStorage
             await AsyncStorage.setItem(
                 "id_card_info",
@@ -177,18 +204,63 @@ export default function IDCardConfirmScreen() {
             // Đặt cờ xác nhận ID card
             await AsyncStorage.setItem("id_card_verified", "true");
 
-            // Hiển thị thông báo xác nhận
-            Alert.alert(
-                "Thành công",
-                "Đã xác nhận thông tin CCCD thành công. Bạn có thể tiếp tục xác minh khuôn mặt.",
-                [
-                    {
-                        text: "Tiếp tục",
-                        onPress: () =>
-                            router.push("/verify/face-verification-redirect"),
-                    },
-                ]
-            );
+            // Gửi thông tin CCCD lên backend
+            try {
+                // Chuẩn bị dữ liệu để gửi lên backend
+                // Chuyển đổi định dạng ngày tháng từ DD/MM/YYYY sang YYYY-MM-DD cho backend
+                const convertDate = (dateStr: string) => {
+                    if (!dateStr) return null;
+                    const parts = dateStr.split("/");
+                    if (parts.length !== 3) return dateStr;
+                    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+                };
+
+                const dataToSend = {
+                    ...editableIdCardInfo,
+                    date_of_birth: convertDate(
+                        editableIdCardInfo.date_of_birth
+                    ),
+                    issue_date: convertDate(editableIdCardInfo.issue_date),
+                    expiry_date: convertDate(editableIdCardInfo.expiry_date),
+                };
+
+                // Gửi dữ liệu lên backend
+                await confirmIdCardInfo(dataToSend);
+
+                // Hiển thị thông báo xác nhận
+                Alert.alert(
+                    "Thành công",
+                    "Đã xác nhận thông tin CCCD thành công. Bạn có thể tiếp tục xác minh khuôn mặt.",
+                    [
+                        {
+                            text: "Tiếp tục",
+                            onPress: () =>
+                                router.push(
+                                    "/verify/face-verification-redirect"
+                                ),
+                        },
+                    ]
+                );
+            } catch (apiError) {
+                console.error(
+                    "Error sending ID card info to backend:",
+                    apiError
+                );
+                // Vẫn cho phép người dùng tiếp tục quy trình xác minh ngay cả khi API gặp lỗi
+                Alert.alert(
+                    "Cảnh báo",
+                    "Đã lưu thông tin CCCD nhưng không thể gửi lên hệ thống. Bạn vẫn có thể tiếp tục xác minh khuôn mặt.",
+                    [
+                        {
+                            text: "Tiếp tục",
+                            onPress: () =>
+                                router.push(
+                                    "/verify/face-verification-redirect"
+                                ),
+                        },
+                    ]
+                );
+            }
         } catch (error) {
             console.error("Error saving edited ID card info:", error);
             Alert.alert(
@@ -218,11 +290,13 @@ export default function IDCardConfirmScreen() {
         router.push("/verify/id-card-front");
     };
 
-    if (loading) {
+    if (loading || isLoading) {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={Colors().PRIMARY} />
-                <Text style={styles.loadingText}>Đang tải thông tin...</Text>
+                <Text style={styles.loadingText}>
+                    {loading ? "Đang tải thông tin..." : "Đang xử lý..."}
+                </Text>
             </View>
         );
     }
